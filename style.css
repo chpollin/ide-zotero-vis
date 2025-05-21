@@ -36,6 +36,7 @@ nav {
   display: flex;
   gap: 0.5rem;
 }
+
 nav button {
   background: var(--primary);
   color: #fff;
@@ -46,6 +47,7 @@ nav button {
   box-shadow: var(--shadow);
   font-size: 0.9rem;
 }
+
 nav button.active {
   background: var(--secondary);
   color: var(--oxford-blue);
@@ -84,9 +86,94 @@ button, input {
   border-radius: 4px;
 }
 
+input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+label {
+  margin-right: 1rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+input[type="range"] {
+  width: 100%;
+  max-width: 300px;
+  margin: 0.5rem 0;
+}
+
+/* Visualization-specific styles */
+circle {
+  transition: r 0.2s ease;
+}
+
+circle:hover {
+  r: 8;
+}
+
+line {
+  stroke-opacity: 0.6;
+}
+
+rect {
+  transition: opacity 0.2s ease;
+}
+
+rect:hover {
+  opacity: 0.8;
+}
+
+/* Filter section */
+.filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* Loading state */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 1.2rem;
+  color: var(--primary);
+}
+
+/* Detail panel styling */
+.detail-panel h3 {
+  color: var(--primary);
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--neutral-border);
+  padding-bottom: 0.5rem;
+}
+
+.detail-panel ul {
+  padding-left: 1.5rem;
+}
+
+.detail-panel a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.detail-panel a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 1199px) {
   .detail-panel { width: 40%; }
 }
+
 @media (max-width: 768px) {
   .detail-panel { display: none; }
+  nav { flex-wrap: wrap; }
+  nav button { margin-bottom: 0.5rem; }
 }

@@ -6,6 +6,13 @@ const CACHE_KEY = 'ide-explorer-cache';
 const GEO_CACHE = 'ide-geo-cache';
 const CACHE_TIME = 24 * 60 * 60 * 1000; // 1 day
 
+// Simple logger with levels
+const logger = {
+  log: (message) => console.log(`[INFO] ${message}`),
+  warn: (message) => console.warn(`[WARN] ${message}`),
+  error: (message) => console.error(`[ERROR] ${message}`)
+};
+
 async function fetchItems() {
   logger.log('Fetching Zotero items...');
   const res = await fetch(`${BASE_URL}/items?limit=100&key=${API_KEY}`);
