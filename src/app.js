@@ -7,10 +7,11 @@ const GEO_CACHE = 'ide-geo-cache';
 const CACHE_TIME = 24 * 60 * 60 * 1000; // 1 day
 
 async function fetchItems() {
-  const res = await fetch(`${BASE_URL}/items?limit=100`, {
-    headers: { 'Zotero-API-Key': API_KEY },
-  });
-  return await res.json();
+  console.log('Fetching Zotero items...');
+  const res = await fetch(`${BASE_URL}/items?limit=100&key=${API_KEY}`);
+  const data = await res.json();
+  console.log(`Fetched ${data.length} items`);
+  return data;
 }
 
 function useZoteroData() {
@@ -23,18 +24,24 @@ function useZoteroData() {
       const { timestamp, data } = JSON.parse(cached);
       if (Date.now() - timestamp < CACHE_TIME) {
         setItems(data);
+        console.log('Loaded items from cache');
         setLoading(false);
         return;
       }
     }
-    fetchItems().then((data) => {
-      setItems(data);
-      localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({ timestamp: Date.now(), data })
-      );
-      setLoading(false);
-    });
+    fetchItems()
+      .then((data) => {
+        setItems(data);
+        localStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({ timestamp: Date.now(), data })
+        );
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch items', err);
+        setLoading(false);
+      });
   }, []);
 
   return { items, loading };
@@ -53,6 +60,7 @@ function Timeline({ items, onSelect }) {
         id: d.key,
         type: d.data.itemType,
       }));
+    console.log(`Timeline items: ${data.length}`);
 
     const margin = { top: 20, right: 20, bottom: 30, left: 40 };
     const width = ref.current.clientWidth - margin.left - margin.right;
@@ -123,8 +131,10 @@ function MapView({ items, onSelect }) {
           .addTo(markers);
       };
       if (geo) {
+        console.log(`Using cached location for ${place}`);
         addMarker(geo);
       } else {
+        console.log(`Geocoding ${place}`);
         fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
             place
@@ -137,12 +147,16 @@ function MapView({ items, onSelect }) {
               cache[place] = { lat, lon };
               localStorage.setItem(GEO_CACHE, JSON.stringify(cache));
               addMarker({ lat, lon });
+            } else {
+              console.warn(`No coordinates for ${place}`);
             }
-          });
+          })
+          .catch((err) => console.error('Geocoding failed', err));
       }
     });
 
     markers.addTo(map);
+    console.log(`Map rendered with ${markers.getLayers().length} markers`);
   }, [items]);
 
   return React.createElement('div', {
@@ -170,6 +184,7 @@ function NetworkView({ items, onSelect }) {
     });
 
     const nodeArray = Object.values(nodes);
+    console.log(`Network nodes: ${nodeArray.length}, links: ${links.length}`);
     const simulation = d3
       .forceSimulation(nodeArray)
       .force('link', d3.forceLink(links).id((d) => d.id).distance(60))
@@ -259,6 +274,7 @@ function TopicsView({ items, onSelect }) {
     });
 
     const data = Object.entries(tagCounts).map(([tag, count]) => ({ tag, count }));
+    console.log(`Topics view with ${data.length} tags`);
 
     const margin = { top: 20, right: 20, bottom: 60, left: 40 };
     const width = ref.current.clientWidth - margin.left - margin.right;
@@ -312,11 +328,11 @@ function TopicsView({ items, onSelect }) {
 }
 
 function DetailPanel({ item }) {
-  if (!item) return React.createElement('div', null, 'Select an item');
+  if (!item) return React.createElement('div', { className: 'detail-panel' }, 'Select an item');
 
   return React.createElement(
     'div',
-    null,
+    { className: 'detail-panel' },
     React.createElement('h3', null, item.data.title),
     React.createElement(
       'ul',
@@ -387,7 +403,12 @@ function App() {
       ['timeline', 'map', 'network', 'topics'].map((v) =>
         React.createElement(
           'button',
-          { key: v, onClick: () => setView(v), style: { marginRight: '0.5rem' } },
+          {
+            key: v,
+            onClick: () => setView(v),
+            className: view === v ? 'active' : '',
+            style: { marginRight: '0.5rem' },
+          },
           v
         )
       )
@@ -432,8 +453,12 @@ function App() {
         )
       )
     ),
-    React.createElement('div', { id: 'visualization' }, content),
-    React.createElement(DetailPanel, { item: selectedItem })
+    React.createElement(
+      'div',
+      { className: 'main' },
+      React.createElement('div', { id: 'visualization' }, content),
+      React.createElement(DetailPanel, { item: selectedItem })
+    )
   );
 }
 
