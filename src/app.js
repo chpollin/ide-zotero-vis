@@ -1,14 +1,16 @@
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 const API_KEY = 'jpnx4yzOKT55S0ZXx6Q7fZ0s';
 const BASE_URL = 'https://api.zotero.org/groups/4712864';
 const CACHE_KEY = 'ide-explorer-cache';
+const GEO_CACHE = 'ide-geo-cache';
 const CACHE_TIME = 24 * 60 * 60 * 1000; // 1 day
 
-function fetchItems() {
-  return fetch(`${BASE_URL}/items?limit=100`, {
+async function fetchItems() {
+  const res = await fetch(`${BASE_URL}/items?limit=100`, {
     headers: { 'Zotero-API-Key': API_KEY },
-  }).then((res) => res.json());
+  });
+  return await res.json();
 }
 
 function useZoteroData() {
@@ -39,17 +41,20 @@ function useZoteroData() {
 }
 
 function Timeline({ items, onSelect }) {
-  const ref = React.useRef(null);
+  const ref = useRef(null);
 
   useEffect(() => {
     if (!items.length) return;
-    const data = items.filter((d) => d.data.date).map((d) => ({
-      date: new Date(d.data.date),
-      title: d.data.title,
-      id: d.key,
-    }));
+    const data = items
+      .filter((d) => d.data.date)
+      .map((d) => ({
+        date: new Date(d.data.date),
+        title: d.data.title,
+        id: d.key,
+        type: d.data.itemType,
+      }));
 
-    const margin = { top: 20, right: 20, bottom: 20, left: 40 };
+    const margin = { top: 20, right: 20, bottom: 30, left: 40 };
     const width = ref.current.clientWidth - margin.left - margin.right;
     const height = ref.current.clientHeight - margin.top - margin.bottom;
 
@@ -67,7 +72,12 @@ function Timeline({ items, onSelect }) {
       .domain(d3.extent(data, (d) => d.date))
       .range([0, width]);
 
-    svg.append('g').attr('transform', `translate(0,${height})`).call(d3.axisBottom(x));
+    svg
+      .append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x));
+
+    const color = d3.scaleOrdinal(d3.schemeTableau10);
 
     svg
       .selectAll('circle')
@@ -76,9 +86,11 @@ function Timeline({ items, onSelect }) {
       .append('circle')
       .attr('cx', (d) => x(d.date))
       .attr('cy', height / 2)
-      .attr('r', 5)
-      .attr('fill', '#005f73')
-      .on('click', (event, d) => onSelect(d.id));
+      .attr('r', 6)
+      .attr('fill', (d) => color(d.type))
+      .on('click', (event, d) => onSelect(d.id))
+      .append('title')
+      .text((d) => d.title);
   }, [items]);
 
   return React.createElement('div', {
@@ -88,7 +100,7 @@ function Timeline({ items, onSelect }) {
 }
 
 function MapView({ items, onSelect }) {
-  const ref = React.useRef(null);
+  const ref = useRef(null);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -97,27 +109,40 @@ function MapView({ items, onSelect }) {
       attribution: '© OpenStreetMap contributors',
     }).addTo(map);
 
+    const markers = L.markerClusterGroup();
+
     items.forEach((item) => {
       const place = item.data.place;
-      if (place) {
-        // Dummy geocoding: not accurate
+      if (!place) return;
+      const cache = JSON.parse(localStorage.getItem(GEO_CACHE) || '{}');
+      const geo = cache[place];
+      const addMarker = ({ lat, lon }) => {
+        L.marker([lat, lon])
+          .bindPopup(item.data.title)
+          .on('click', () => onSelect(item.key))
+          .addTo(markers);
+      };
+      if (geo) {
+        addMarker(geo);
+      } else {
         fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
             place
           )}`
         )
           .then((res) => res.json())
-          .then((geo) => {
-            if (geo[0]) {
-              const { lat, lon } = geo[0];
-              L.marker([lat, lon])
-                .addTo(map)
-                .bindPopup(item.data.title)
-                .on('click', () => onSelect(item.key));
+          .then((g) => {
+            if (g[0]) {
+              const { lat, lon } = g[0];
+              cache[place] = { lat, lon };
+              localStorage.setItem(GEO_CACHE, JSON.stringify(cache));
+              addMarker({ lat, lon });
             }
           });
       }
     });
+
+    markers.addTo(map);
   }, [items]);
 
   return React.createElement('div', {
@@ -127,7 +152,7 @@ function MapView({ items, onSelect }) {
 }
 
 function NetworkView({ items, onSelect }) {
-  const ref = React.useRef(null);
+  const ref = useRef(null);
 
   useEffect(() => {
     if (!items.length) return;
@@ -139,17 +164,20 @@ function NetworkView({ items, onSelect }) {
       creators.forEach((c) => {
         const id = c.name || c.lastName;
         if (!nodes[id]) nodes[id] = { id };
-        links.push({ source: item.key, target: id });
-        nodes[item.key] = { id: item.key, title: item.data.title, item: true };
+        links.push({ source: id, target: item.key });
       });
+      nodes[item.key] = { id: item.key, title: item.data.title, item: true };
     });
 
     const nodeArray = Object.values(nodes);
     const simulation = d3
       .forceSimulation(nodeArray)
-      .force('link', d3.forceLink(links).id((d) => d.id).distance(50))
+      .force('link', d3.forceLink(links).id((d) => d.id).distance(60))
       .force('charge', d3.forceManyBody().strength(-200))
-      .force('center', d3.forceCenter(ref.current.clientWidth / 2, ref.current.clientHeight / 2));
+      .force(
+        'center',
+        d3.forceCenter(ref.current.clientWidth / 2, ref.current.clientHeight / 2)
+      );
 
     d3.select(ref.current).selectAll('*').remove();
     const svg = d3
@@ -172,7 +200,7 @@ function NetworkView({ items, onSelect }) {
       .data(nodeArray)
       .enter()
       .append('circle')
-      .attr('r', 5)
+      .attr('r', 6)
       .attr('fill', (d) => (d.item ? '#ee9b00' : '#005f73'))
       .call(
         d3
@@ -182,6 +210,8 @@ function NetworkView({ items, onSelect }) {
           .on('end', dragend)
       )
       .on('click', (event, d) => d.item && onSelect(d.id));
+
+    node.append('title').text((d) => d.title || d.id);
 
     simulation.on('tick', () => {
       link
@@ -218,7 +248,7 @@ function NetworkView({ items, onSelect }) {
 }
 
 function TopicsView({ items, onSelect }) {
-  const ref = React.useRef(null);
+  const ref = useRef(null);
 
   useEffect(() => {
     const tagCounts = {};
@@ -230,7 +260,7 @@ function TopicsView({ items, onSelect }) {
 
     const data = Object.entries(tagCounts).map(([tag, count]) => ({ tag, count }));
 
-    const margin = { top: 20, right: 20, bottom: 50, left: 40 };
+    const margin = { top: 20, right: 20, bottom: 60, left: 40 };
     const width = ref.current.clientWidth - margin.left - margin.right;
     const height = ref.current.clientHeight - margin.top - margin.bottom;
 
@@ -250,7 +280,13 @@ function TopicsView({ items, onSelect }) {
       .padding(0.1);
     const y = d3.scaleLinear().domain([0, d3.max(data, (d) => d.count)]).range([height, 0]);
 
-    svg.append('g').attr('transform', `translate(0,${height})`).call(d3.axisBottom(x)).selectAll('text').attr('transform', 'rotate(-45)').style('text-anchor', 'end');
+    svg
+      .append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text')
+      .attr('transform', 'rotate(-45)')
+      .style('text-anchor', 'end');
 
     svg.append('g').call(d3.axisLeft(y));
 
@@ -264,7 +300,9 @@ function TopicsView({ items, onSelect }) {
       .attr('width', x.bandwidth())
       .attr('height', (d) => height - y(d.count))
       .attr('fill', '#94d2bd')
-      .on('click', (event, d) => onSelect(d.tag));
+      .on('click', (event, d) => onSelect(d.tag))
+      .append('title')
+      .text((d) => d.tag);
   }, [items]);
 
   return React.createElement('div', {
@@ -283,9 +321,15 @@ function DetailPanel({ item }) {
     React.createElement(
       'ul',
       null,
+      React.createElement('li', null, `Type: ${item.data.itemType}`),
       React.createElement('li', null, `Date: ${item.data.date}`),
       React.createElement('li', null, `Place: ${item.data.place}`),
-      React.createElement('li', null, `URL: `, React.createElement('a', { href: item.data.url, target: '_blank' }, 'Link'))
+      React.createElement(
+        'li',
+        null,
+        'URL: ',
+        React.createElement('a', { href: item.data.url, target: '_blank' }, 'Link')
+      )
     )
   );
 }
@@ -294,16 +338,45 @@ function App() {
   const { items, loading } = useZoteroData();
   const [view, setView] = useState('timeline');
   const [selectedId, setSelectedId] = useState(null);
+  const [yearRange, setYearRange] = useState([2008, 2025]);
+  const [typeFilter, setTypeFilter] = useState({});
+
+  useEffect(() => {
+    if (!items.length) return;
+    const years = items
+      .filter((i) => i.data.date)
+      .map((i) => new Date(i.data.date).getFullYear());
+    const min = Math.min(...years);
+    const max = Math.max(...years);
+    setYearRange([min, max]);
+
+    const types = {};
+    items.forEach((i) => {
+      types[i.data.itemType] = true;
+    });
+    setTypeFilter(types);
+  }, [items]);
 
   if (loading) return React.createElement('div', null, 'Loading...');
+
+  const filtered = items.filter((item) => {
+    const year = item.data.date ? new Date(item.data.date).getFullYear() : null;
+    const inYear = !year || (year >= yearRange[0] && year <= yearRange[1]);
+    const typeOk = typeFilter[item.data.itemType];
+    return inYear && typeOk;
+  });
 
   const selectedItem = items.find((i) => i.key === selectedId);
 
   let content = null;
-  if (view === 'timeline') content = React.createElement(Timeline, { items, onSelect: setSelectedId });
-  if (view === 'map') content = React.createElement(MapView, { items, onSelect: setSelectedId });
-  if (view === 'network') content = React.createElement(NetworkView, { items, onSelect: setSelectedId });
-  if (view === 'topics') content = React.createElement(TopicsView, { items, onSelect: setSelectedId });
+  if (view === 'timeline')
+    content = React.createElement(Timeline, { items: filtered, onSelect: setSelectedId });
+  if (view === 'map')
+    content = React.createElement(MapView, { items: filtered, onSelect: setSelectedId });
+  if (view === 'network')
+    content = React.createElement(NetworkView, { items: filtered, onSelect: setSelectedId });
+  if (view === 'topics')
+    content = React.createElement(TopicsView, { items: filtered, onSelect: setSelectedId });
 
   return React.createElement(
     'div',
@@ -314,8 +387,48 @@ function App() {
       ['timeline', 'map', 'network', 'topics'].map((v) =>
         React.createElement(
           'button',
-          { key: v, onClick: () => setView(v) },
+          { key: v, onClick: () => setView(v), style: { marginRight: '0.5rem' } },
           v
+        )
+      )
+    ),
+    React.createElement(
+      'section',
+      { style: { padding: '0.5rem' } },
+      React.createElement('label', null, `Years ${yearRange[0]} - ${yearRange[1]}`),
+      React.createElement('br'),
+      React.createElement('input', {
+        type: 'range',
+        min: yearRange[0],
+        max: yearRange[1],
+        value: yearRange[0],
+        onChange: (e) => setYearRange([+e.target.value, yearRange[1]]),
+      }),
+      React.createElement('input', {
+        type: 'range',
+        min: yearRange[0],
+        max: yearRange[1],
+        value: yearRange[1],
+        onChange: (e) => setYearRange([yearRange[0], +e.target.value]),
+      }),
+      React.createElement(
+        'div',
+        null,
+        Object.keys(typeFilter).map((t) =>
+          React.createElement(
+            'label',
+            { key: t, style: { marginRight: '1rem' } },
+            React.createElement('input', {
+              type: 'checkbox',
+              checked: typeFilter[t],
+              onChange: (e) => {
+                const f = { ...typeFilter, [t]: e.target.checked };
+                setTypeFilter(f);
+              },
+            }),
+            ' ',
+            t
+          )
         )
       )
     ),
