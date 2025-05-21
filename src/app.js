@@ -6,11 +6,18 @@ const CACHE_KEY = 'ide-explorer-cache';
 const GEO_CACHE = 'ide-geo-cache';
 const CACHE_TIME = 24 * 60 * 60 * 1000; // 1 day
 
+// Simple logger with levels
+const logger = {
+  log: (message) => console.log(`[INFO] ${message}`),
+  warn: (message) => console.warn(`[WARN] ${message}`),
+  error: (message) => console.error(`[ERROR] ${message}`)
+};
+
 async function fetchItems() {
-  console.log('Fetching Zotero items...');
+  logger.log('Fetching Zotero items...');
   const res = await fetch(`${BASE_URL}/items?limit=100&key=${API_KEY}`);
   const data = await res.json();
-  console.log(`Fetched ${data.length} items`);
+  logger.log(`Fetched ${data.length} items`);
   return data;
 }
 
@@ -24,7 +31,7 @@ function useZoteroData() {
       const { timestamp, data } = JSON.parse(cached);
       if (Date.now() - timestamp < CACHE_TIME) {
         setItems(data);
-        console.log('Loaded items from cache');
+        logger.log('Loaded items from cache');
         setLoading(false);
         return;
       }
@@ -39,7 +46,7 @@ function useZoteroData() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Failed to fetch items', err);
+        logger.error('Failed to fetch items');
         setLoading(false);
       });
   }, []);
@@ -60,7 +67,7 @@ function Timeline({ items, onSelect }) {
         id: d.key,
         type: d.data.itemType,
       }));
-    console.log(`Timeline items: ${data.length}`);
+    logger.log(`Timeline items: ${data.length}`);
 
     const margin = { top: 20, right: 20, bottom: 30, left: 40 };
     const width = ref.current.clientWidth - margin.left - margin.right;
@@ -131,10 +138,10 @@ function MapView({ items, onSelect }) {
           .addTo(markers);
       };
       if (geo) {
-        console.log(`Using cached location for ${place}`);
+        logger.log(`Using cached location for ${place}`);
         addMarker(geo);
       } else {
-        console.log(`Geocoding ${place}`);
+        logger.log(`Geocoding ${place}`);
         fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
             place
@@ -148,15 +155,15 @@ function MapView({ items, onSelect }) {
               localStorage.setItem(GEO_CACHE, JSON.stringify(cache));
               addMarker({ lat, lon });
             } else {
-              console.warn(`No coordinates for ${place}`);
+              logger.warn(`No coordinates for ${place}`);
             }
           })
-          .catch((err) => console.error('Geocoding failed', err));
+          .catch(() => logger.error('Geocoding failed'));
       }
     });
 
     markers.addTo(map);
-    console.log(`Map rendered with ${markers.getLayers().length} markers`);
+    logger.log(`Map rendered with ${markers.getLayers().length} markers`);
   }, [items]);
 
   return React.createElement('div', {
@@ -184,7 +191,7 @@ function NetworkView({ items, onSelect }) {
     });
 
     const nodeArray = Object.values(nodes);
-    console.log(`Network nodes: ${nodeArray.length}, links: ${links.length}`);
+    logger.log(`Network nodes: ${nodeArray.length}, links: ${links.length}`);
     const simulation = d3
       .forceSimulation(nodeArray)
       .force('link', d3.forceLink(links).id((d) => d.id).distance(60))
@@ -274,7 +281,7 @@ function TopicsView({ items, onSelect }) {
     });
 
     const data = Object.entries(tagCounts).map(([tag, count]) => ({ tag, count }));
-    console.log(`Topics view with ${data.length} tags`);
+    logger.log(`Topics view with ${data.length} tags`);
 
     const margin = { top: 20, right: 20, bottom: 60, left: 40 };
     const width = ref.current.clientWidth - margin.left - margin.right;
@@ -373,6 +380,14 @@ function App() {
     setTypeFilter(types);
   }, [items]);
 
+  useEffect(() => {
+    logger.log(`Switched to ${view} view`);
+  }, [view]);
+
+  useEffect(() => {
+    if (selectedId) logger.log(`Selected ${selectedId}`);
+  }, [selectedId]);
+
   if (loading) return React.createElement('div', null, 'Loading...');
 
   const filtered = items.filter((item) => {
@@ -407,7 +422,6 @@ function App() {
             key: v,
             onClick: () => setView(v),
             className: view === v ? 'active' : '',
-            style: { marginRight: '0.5rem' },
           },
           v
         )
@@ -415,7 +429,7 @@ function App() {
     ),
     React.createElement(
       'section',
-      { style: { padding: '0.5rem' } },
+      null,
       React.createElement('label', null, `Years ${yearRange[0]} - ${yearRange[1]}`),
       React.createElement('br'),
       React.createElement('input', {
@@ -438,7 +452,7 @@ function App() {
         Object.keys(typeFilter).map((t) =>
           React.createElement(
             'label',
-            { key: t, style: { marginRight: '1rem' } },
+            { key: t },
             React.createElement('input', {
               type: 'checkbox',
               checked: typeFilter[t],
@@ -462,4 +476,5 @@ function App() {
   );
 }
 
-ReactDOM.render(React.createElement(App), document.getElementById('app'));
+const root = ReactDOM.createRoot(document.getElementById('app'));
+root.render(React.createElement(App));

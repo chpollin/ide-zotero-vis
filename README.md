@@ -15,4 +15,8 @@ This project is a lightweight single-page web application that visualizes biblio
 
 No build step is required. All dependencies are loaded from CDNs at runtime.
 
+The app uses a separate `style.css` for the full design specified in
+`DESIGN.md`. Console output is prefixed with `[IDE]` to help debugging while
+running on GitHub Pages.
+
 ## Development Notes
