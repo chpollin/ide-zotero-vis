@@ -1,43 +1,307 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>IDE Explorer</title>
+<title>IDE · Eine Datengeschichte</title>
+<meta name="description" content="Die Geschichte des Instituts für Digitale Edition, erzählt durch seine Daten." />
+<meta property="og:title" content="IDE · Eine Datengeschichte" />
+<meta property="og:description" content="Scrollytelling Data Story des Instituts für Digitale Edition (2008–2024)" />
+<meta property="og:type" content="website" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link
-  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Merriweather:wght@400;700&display=swap"
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap"
   rel="stylesheet"
 />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
-  />
-  <link rel="stylesheet" href="./style.css" />
+<link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <header>
-    <h1>IDE Explorer</h1>
-  </header>
-  <div id="app"></div>
 
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-  <script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <!-- Scroll progress bar -->
+  <div id="progress-bar"></div>
 
-  <script type="text/babel" src="./src/logger.js"></script>
-  <script type="text/babel" src="./src/app.js"></script>
+  <!-- Language toggle -->
+  <button id="lang-toggle" aria-label="Switch language">EN</button>
+
+  <!-- Loading screen -->
+  <div id="loading">
+    <div class="loading-text">
+      <span class="lang-de">Daten werden geladen</span>
+      <span class="lang-en">Loading data</span>
+    </div>
+    <div class="loading-dots"><span>.</span><span>.</span><span>.</span></div>
+  </div>
+
+  <!-- Scroll indicator (fixed to viewport) -->
+  <div id="scroll-indicator">
+    <span class="scroll-label lang-de">Scrollen</span>
+    <span class="scroll-label lang-en">Scroll</span>
+    <div class="scroll-arrow"></div>
+  </div>
+
+  <!-- ==================== SCROLLYTELLING ==================== -->
+  <section id="scrolly">
+    <!-- Sticky visualization container -->
+    <div id="sticky-vis">
+      <canvas id="particles" role="img" aria-label="Partikelvisualisierung der IDE-Publikationen"></canvas>
+      <svg id="annotation-layer"></svg>
+      <div id="tooltip"></div>
+    </div>
+
+    <!-- Narrative steps -->
+    <div id="steps">
+
+      <!-- Act 1: Introduction / Cloud -->
+      <div class="step" data-step="intro">
+        <div class="step-content">
+          <span class="step-kicker lang-de">Eine Datengeschichte</span>
+          <span class="step-kicker lang-en">A Data Story</span>
+          <h2 class="step-title">
+            <span class="lang-de">Das Institut für Digitale Edition</span>
+            <span class="lang-en">The Institute for Digital Scholarly Editing</span>
+          </h2>
+          <p class="step-text">
+            <span class="lang-de">Jeder Punkt repräsentiert eine Publikation, einen Workshop, einen Beitrag zum Wissen über digitale Editionen. Gemeinsam erzählen sie die Geschichte einer Institution, die seit 2008 die digitale Editionswissenschaft im deutschsprachigen Raum prägt.</span>
+            <span class="lang-en">Each dot represents a publication, a workshop, a contribution to knowledge about digital editions. Together, they tell the story of an institution that has shaped digital scholarly editing in the German-speaking world since 2008.</span>
+          </p>
+          <div class="step-stats">
+            <span class="stat">
+              <span class="stat-number" id="stat-count">–</span>
+              <span class="stat-label lang-de">Beiträge</span>
+              <span class="stat-label lang-en">Items</span>
+            </span>
+            <span class="stat-divider">&middot;</span>
+            <span class="stat">
+              <span class="stat-number">2008–2024</span>
+            </span>
+            <span class="stat-divider">&middot;</span>
+            <span class="stat">
+              <span class="stat-number">5</span>
+              <span class="stat-label lang-de">Sammlungen</span>
+              <span class="stat-label lang-en">Collections</span>
+            </span>
+          </div>
+          <div class="step-legend">
+            <div class="legend-row">
+              <span class="legend-dot" style="background: var(--color-schools)"></span>
+              <span class="legend-label">Schools</span>
+              <span class="legend-dot" style="background: var(--color-ride)"></span>
+              <span class="legend-label">RIDE</span>
+              <span class="legend-dot" style="background: var(--color-side)"></span>
+              <span class="legend-label">SIDE</span>
+              <span class="legend-dot" style="background: var(--color-events)"></span>
+              <span class="legend-label">Events</span>
+            </div>
+            <div class="legend-row legend-size">
+              <span class="legend-dot legend-dot-lg"></span>
+              <span class="legend-label lang-de">Buch</span>
+              <span class="legend-label lang-en">Book</span>
+              <span class="legend-dot legend-dot-md"></span>
+              <span class="legend-label lang-de">Artikel</span>
+              <span class="legend-label lang-en">Article</span>
+              <span class="legend-dot legend-dot-sm"></span>
+              <span class="legend-label lang-de">Blogpost</span>
+              <span class="legend-label lang-en">Blog post</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Act 2: Timeline -->
+      <div class="step" data-step="timeline">
+        <div class="step-content">
+          <span class="step-kicker lang-de">2008–2024</span>
+          <span class="step-kicker lang-en">2008–2024</span>
+          <h2 class="step-title">
+            <span class="lang-de">Eine Chronologie des Wissens</span>
+            <span class="lang-en">A Chronology of Knowledge</span>
+          </h2>
+          <p class="step-text">
+            <span class="lang-de">Geordnet auf einer Zeitachse zeigt sich der Rhythmus der Arbeit: erste Veröffentlichungen ab 2008, ein stetiges Wachstum ab 2012, und eine Verdichtung der Aktivitäten in den letzten Jahren. Die Größe der Punkte spiegelt den Umfang – von Monografien bis zu Blogbeiträgen.</span>
+            <span class="lang-en">Arranged on a timeline, the rhythm of work becomes visible: first publications from 2008, steady growth from 2012, and an intensification of activities in recent years. The size of the dots reflects scope – from monographs to blog posts.</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Act 3: Three Pillars / Clusters -->
+      <div class="step" data-step="pillars">
+        <div class="step-content">
+          <span class="step-kicker lang-de">Drei Säulen</span>
+          <span class="step-kicker lang-en">Three Pillars</span>
+          <h2 class="step-title">
+            <span class="lang-de">Schools · RIDE · SIDE</span>
+            <span class="lang-en">Schools · RIDE · SIDE</span>
+          </h2>
+          <p class="step-text">
+            <span class="lang-de">Drei Säulen tragen das IDE. Die <strong>Schools</strong> vermitteln Editionskompetenz in über 20 Workshops. Die Zeitschrift <strong>RIDE</strong> etabliert ein Rezensionsorgan für digitale Editionen mit 17 Ausgaben. Und die Reihe <strong>SIDE</strong> bündelt die Forschung in einer eigenständigen Publikationsreihe.</span>
+            <span class="lang-en">Three pillars support the IDE. The <strong>Schools</strong> teach editing competence in over 20 workshops. The journal <strong>RIDE</strong> establishes a review organ for digital editions with 17 issues. And the series <strong>SIDE</strong> bundles research into a dedicated publication series.</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Act 4: Network -->
+      <div class="step" data-step="network">
+        <div class="step-content">
+          <span class="step-kicker lang-de">Verbindungen</span>
+          <span class="step-kicker lang-en">Connections</span>
+          <h2 class="step-title">
+            <span class="lang-de">Ein Netzwerk von Menschen</span>
+            <span class="lang-en">A Network of People</span>
+          </h2>
+          <p class="step-text">
+            <span class="lang-de">Hinter den Publikationen steht ein Netzwerk von Forschenden. Acht Personen bilden den Kern: Fischer, Neuber, Sahle, Schulz, Gengnagel, Sichani, Spadini und Fritze. Verbindungslinien zeigen, wer gemeinsam publiziert hat – ein Gewebe aus Zusammenarbeit über Institutions- und Landesgrenzen hinweg.</span>
+            <span class="lang-en">Behind the publications stands a network of researchers. Eight individuals form the core: Fischer, Neuber, Sahle, Schulz, Gengnagel, Sichani, Spadini, and Fritze. Lines show who has published together – a fabric of collaboration across institutional and national borders.</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Act 5: Geography / Map -->
+      <div class="step" data-step="geography">
+        <div class="step-content">
+          <span class="step-kicker lang-de">Geografie</span>
+          <span class="step-kicker lang-en">Geography</span>
+          <h2 class="step-title">
+            <span class="lang-de">Von Köln in die Welt</span>
+            <span class="lang-en">From Cologne to the World</span>
+          </h2>
+          <p class="step-text">
+            <span class="lang-de">2008 in Köln gegründet, hat sich das IDE über den deutschsprachigen Raum ausgebreitet. Wien wurde mit 11 Veranstaltungen zum zweiten Zentrum. Schools fanden in Berlin, Graz, Chemnitz und Wuppertal statt – ein europäisches Netzwerk der Editionswissenschaft.</span>
+            <span class="lang-en">Founded in Cologne in 2008, the IDE has spread across the German-speaking world. Vienna became the second center with 11 events. Schools took place in Berlin, Graz, Chemnitz, and Wuppertal – a European network of editorial scholarship.</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Act 6: Explorer transition -->
+      <div class="step" data-step="explorer">
+        <div class="step-content">
+          <span class="step-kicker lang-de">Erkunden</span>
+          <span class="step-kicker lang-en">Explore</span>
+          <h2 class="step-title">
+            <span class="lang-de">Entdecken Sie die Daten</span>
+            <span class="lang-en">Discover the Data</span>
+          </h2>
+          <p class="step-text">
+            <span class="lang-de">Die Geschichte geht weiter. Wechseln Sie zwischen den Ansichten, filtern Sie nach Zeit, Sammlung oder Person – und entdecken Sie Ihre eigene Perspektive auf das IDE.</span>
+            <span class="lang-en">The story continues. Switch between views, filter by time, collection, or person – and discover your own perspective on the IDE.</span>
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==================== INTERACTIVE EXPLORER ==================== -->
+  <section id="explorer-section" class="hidden">
+    <div id="explorer-header">
+      <h2>
+        <span class="lang-de">Explorer</span>
+        <span class="lang-en">Explorer</span>
+      </h2>
+      <div id="layout-buttons">
+        <button class="layout-btn active" data-layout="cloud">
+          <span class="lang-de">Wolke</span>
+          <span class="lang-en">Cloud</span>
+        </button>
+        <button class="layout-btn" data-layout="timeline">
+          <span class="lang-de">Zeit</span>
+          <span class="lang-en">Time</span>
+        </button>
+        <button class="layout-btn" data-layout="clusters">
+          <span class="lang-de">Säulen</span>
+          <span class="lang-en">Pillars</span>
+        </button>
+        <button class="layout-btn" data-layout="network">
+          <span class="lang-de">Netzwerk</span>
+          <span class="lang-en">Network</span>
+        </button>
+        <button class="layout-btn" data-layout="map">
+          <span class="lang-de">Karte</span>
+          <span class="lang-en">Map</span>
+        </button>
+      </div>
+      <div id="filter-controls">
+        <div id="year-filter">
+          <label>
+            <span class="lang-de">Zeitraum:</span>
+            <span class="lang-en">Period:</span>
+            <span id="year-label">2008 – 2024</span>
+          </label>
+          <input type="range" id="year-min" min="2008" max="2024" value="2008" aria-label="Start year" />
+          <input type="range" id="year-max" min="2008" max="2024" value="2024" aria-label="End year" />
+        </div>
+        <div id="pillar-filter">
+          <button class="pillar-btn active" data-pillar="all" aria-label="Alle Sammlungen anzeigen">
+            <span class="lang-de">Alle</span>
+            <span class="lang-en">All</span>
+          </button>
+          <button class="pillar-btn" data-pillar="Schools" aria-label="Schools filtern">Schools</button>
+          <button class="pillar-btn" data-pillar="RIDE" aria-label="RIDE filtern">RIDE</button>
+          <button class="pillar-btn" data-pillar="SIDE" aria-label="SIDE filtern">SIDE</button>
+          <button class="pillar-btn" data-pillar="Events" aria-label="Events filtern">Events</button>
+        </div>
+      </div>
+    </div>
+    <div id="explorer-main">
+      <canvas id="explorer-canvas" role="img" aria-label="Interaktiver Explorer der IDE-Publikationen"></canvas>
+      <div id="explorer-tooltip"></div>
+    </div>
+    <div id="detail-panel" class="hidden" tabindex="-1">
+      <button id="detail-close" aria-label="Close">&times;</button>
+      <h3 id="detail-title"></h3>
+      <div id="detail-meta"></div>
+      <div id="detail-abstract"></div>
+      <div id="detail-creators"></div>
+      <div id="detail-link"></div>
+    </div>
+  </section>
+
+  <!-- Scripts (no build step, all CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://unpkg.com/scrollama@3.2.0/build/scrollama.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+  <script src="./src/data.js"></script>
+  <script src="./src/layouts.js"></script>
+  <script src="./src/canvas-utils.js"></script>
+  <script src="./src/particles.js"></script>
+  <script src="./src/scroll.js"></script>
+  <script src="./src/narrative.js"></script>
+  <script src="./src/explorer.js"></script>
+
+  <!-- Bootstrap -->
+  <script>
+    (async () => {
+      'use strict';
+      const loading = document.getElementById('loading');
+
+      try {
+        const items = await window.IDEData.loadData();
+
+        const statCount = document.getElementById('stat-count');
+        if (statCount) statCount.textContent = items.length;
+
+        window.IDENarrative.init();
+        window.IDEParticles.init(document.getElementById('particles'), items);
+        window.IDEScroll.init();
+        window.IDEExplorer.init(items);
+        window.IDEParticles.applyLayout('cloud', false);
+
+        if (loading) {
+          loading.classList.add('fade-out');
+          setTimeout(() => { loading.style.display = 'none'; }, 700);
+        }
+      } catch (err) {
+        console.error('[IDE] Bootstrap failed:', err);
+        if (loading) {
+          loading.querySelector('.loading-text').textContent =
+            'Error loading data. Please refresh.';
+          loading.querySelector('.loading-dots').style.display = 'none';
+        }
+      }
+    })();
+  </script>
 </body>
 </html>
