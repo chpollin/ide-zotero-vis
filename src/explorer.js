@@ -22,7 +22,7 @@
   const EXPLORER_LAYOUT_STAGGER = 5;
   const EXPLORER_INITIAL_JITTER = 100;
   const HOVER_RADIUS_BOOST = 3;
-  const TOOLTIP_MAX_WIDTH = 200;
+  const TOOLTIP_MAX_WIDTH = 300;
   const EXPLORER_NETWORK_CONFIG = {
     linkDistance: 30,
     charge: -40,
@@ -89,7 +89,6 @@
 
   function createExplorerParticles() {
     const filtered = getFilteredItems();
-    const half = EXPLORER_INITIAL_JITTER / 2;
     explorerParticles = filtered.map((item, i) => ({
       id: item.id,
       x: width / 2 + (Math.random() - 0.5) * EXPLORER_INITIAL_JITTER,

@@ -34,7 +34,6 @@
   --shadow-strong: 0 2px 12px rgba(0, 0, 0, 0.06);
 
   /* Spacing */
-  --step-max-width: 480px;
   --step-padding: 2.5rem 3rem;
 
   /* Animation */
@@ -800,17 +799,6 @@ html[lang="en"] .lang-de {
   display: none !important;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
-
 /* ---------- Reduced Motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -822,12 +810,11 @@ html[lang="en"] .lang-de {
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1199px) {
-  :root { --step-max-width: 420px; }
   #detail-panel { width: 320px; }
 }
 
 @media (max-width: 768px) {
-  :root { --step-max-width: 100%; --step-padding: 1.5rem 1.8rem; }
+  :root { --step-padding: 1.5rem 1.8rem; }
 
   /* Revert to stacked overlay layout on mobile */
   #scrolly { display: block; }

@@ -458,11 +458,6 @@
   }
 
   // ─── Public API ───────────────────────────────────
-  window.IDEParticles = {
-    init,
-    applyLayout,
-    getParticles: () => particles,
-    resize
-  };
+  window.IDEParticles = { init, applyLayout };
 
 })();

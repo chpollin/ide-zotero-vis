@@ -8,7 +8,7 @@
 | **Scrollama** | 3.2 | Scroll-Trigger (IntersectionObserver) | `unpkg.com/scrollama@3.2.0` |
 | **Google Fonts** | — | Merriweather + Inter | Google Fonts CDN |
 
-> **GSAP wurde entfernt.** Das Side-by-Side Layout nutzt natives CSS `position: sticky` — GSAP ScrollTrigger-Pinning ist nicht mehr nötig. GSAP-CDN-Tags bleiben in `index.html`, werden aber nicht aktiv genutzt.
+> **GSAP wurde entfernt.** Das Side-by-Side Layout nutzt natives CSS `position: sticky` — GSAP ScrollTrigger-Pinning ist nicht mehr nötig.
 
 ## Begründung: Warum kein React?
 

@@ -138,17 +138,6 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
-  const ERA_BOUNDARIES = { genesis: 2011, pillars: 2016, network: 2020 };
-
-  function resolveEra(date) {
-    if (!date) return 'unknown';
-    const year = date.getFullYear();
-    if (year <= ERA_BOUNDARIES.genesis) return 'genesis';
-    if (year <= ERA_BOUNDARIES.pillars) return 'pillars';
-    if (year <= ERA_BOUNDARIES.network) return 'network';
-    return 'today';
-  }
-
   function getCreatorName(creator) {
     if (creator.name) return creator.name;
     return [creator.firstName, creator.lastName].filter(Boolean).join(' ');
@@ -220,13 +209,9 @@
               color: PILLAR_COLORS[pillar] || PILLAR_COLORS.Varia,
               radius: TYPE_RADIUS[item.data.itemType] || 5,
               creators: (item.data.creators || []).map(getCreatorName),
-              era: resolveEra(date),
               url: item.data.url || null,
               abstract: item.data.abstractNote || null,
-              tags: (item.data.tags || []).map(t => t.tag),
-              collections,
-              shortTitle: item.data.shortTitle || null,
-              meetingName: item.data.meetingName || null
+              collections
             };
           });
 
@@ -275,17 +260,7 @@
       }
     });
 
-    const creatorNodes = Object.keys(creatorItems).map(name => {
-      const count = creatorItems[name].length;
-      return {
-        id: name,
-        type: 'creator',
-        itemCount: count,
-        radius: Math.max(4, Math.min(14, count * 2))
-      };
-    });
-
-    return { creatorNodes, links };
+    return { links };
   }
 
   // ─── Export ───────────────────────────────────────
