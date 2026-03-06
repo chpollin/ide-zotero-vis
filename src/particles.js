@@ -15,6 +15,10 @@
   let hoveredParticle = null;
   let networkData = null;
   let networkPositions = null;
+  let genesisPositions = null;
+  let genesisLinks = null;
+  let genesisYearLabels = [];
+  let particleMap = {};
   let overlayElements = [];
   let tooltipEl = null;
 
@@ -29,6 +33,17 @@
     ticks: 200,
     collisionRadius: 8
   };
+  const GENESIS_SIM_CONFIG = {
+    xStrength: 0.6,
+    yStrength: 0.04,
+    linkDistance: 40,
+    linkStrength: 0.06,
+    charge: -150,
+    collisionRadius: 12,
+    ticks: 300
+  };
+  const GENESIS_LINE_OPACITY = 0.08;
+  const GENESIS_MIN_SHARED_CREATORS = 2;
 
   // ─── Initialization ──────────────────────────────────
   function init(canvasEl, items) {
@@ -55,8 +70,13 @@
       startTime: 0
     }));
 
+    // Build fast ID → particle lookup
+    particleMap = {};
+    particles.forEach(p => { particleMap[p.id] = p; });
+
     networkData = window.IDEData.buildCoAuthorshipLinks(items);
     precomputeNetworkLayout();
+    precomputeGenesisLayout();
 
     requestAnimationFrame(render);
 
@@ -94,10 +114,16 @@
 
     if (currentLayout === 'network' && networkPositions) {
       drawNetworkLines();
+    } else if (currentLayout === 'genesis' && genesisLinks) {
+      drawGenesisLines();
     }
 
     window.IDECanvasUtils.lerpParticles(particles, now, { threshold: 0.5 });
     window.IDECanvasUtils.drawParticles(ctx, particles);
+
+    if (currentLayout === 'genesis' && genesisYearLabels.length > 0) {
+      drawYearLabels();
+    }
 
     requestAnimationFrame(render);
   }
@@ -108,18 +134,60 @@
     ctx.save();
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
     ctx.lineWidth = 0.5;
+    ctx.beginPath();
 
     for (const link of networkData.links) {
       const sourcePos = networkPositions[link.source];
       const targetPos = networkPositions[link.target];
       if (!sourcePos || !targetPos) continue;
 
-      ctx.beginPath();
       ctx.moveTo(sourcePos.x, sourcePos.y);
       ctx.lineTo(targetPos.x, targetPos.y);
-      ctx.stroke();
     }
 
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGenesisLines() {
+    if (!genesisLinks) return;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(0, 0, 0, ${GENESIS_LINE_OPACITY})`;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+
+    for (const link of genesisLinks) {
+      const s = particleMap[link.source];
+      const t = particleMap[link.target];
+      if (!s || !t || s.opacity < 0.1 || t.opacity < 0.1) continue;
+
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(t.x, t.y);
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawYearLabels() {
+    if (!genesisPositions) return;
+
+    // Scale labels the same way genesis layout scales positions
+    const allPos = Object.values(genesisPositions);
+    const xExtent = d3.extent(allPos, d => d.rawX);
+    const scaleX = d3.scaleLinear().domain(xExtent).range([60, width - 60]);
+
+    ctx.save();
+    ctx.font = '600 0.6rem Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+
+    const y = height - 25;
+    for (const label of genesisYearLabels) {
+      const x = scaleX(label.rawX);
+      ctx.fillText(label.year, x, y);
+    }
     ctx.restore();
   }
 
@@ -171,6 +239,95 @@
     });
   }
 
+  // ─── Genesis Precomputation ─────────────────────────
+  function precomputeGenesisLayout() {
+    // Build item-to-item co-authorship with weight (shared creator count)
+    const creatorToItems = {};
+    particles.forEach(p => {
+      p.data.creators.forEach(name => {
+        if (name === 'IDE') return;
+        if (!creatorToItems[name]) creatorToItems[name] = [];
+        creatorToItems[name].push(p.id);
+      });
+    });
+
+    // Count shared creators per item pair
+    const pairWeight = {};
+    Object.values(creatorToItems).forEach(ids => {
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const key = ids[i] < ids[j] ? `${ids[i]}|${ids[j]}` : `${ids[j]}|${ids[i]}`;
+          pairWeight[key] = (pairWeight[key] || 0) + 1;
+        }
+      }
+    });
+
+    // Only keep links with >= GENESIS_MIN_SHARED_CREATORS shared authors
+    const allLinks = [];
+    const visibleLinks = [];
+    for (const [key, weight] of Object.entries(pairWeight)) {
+      const [source, target] = key.split('|');
+      allLinks.push({ source, target, weight });
+      if (weight >= GENESIS_MIN_SHARED_CREATORS) {
+        visibleLinks.push({ source, target, weight });
+      }
+    }
+    genesisLinks = visibleLinks; // Only draw strong links
+
+    // Sqrt-scaled x positioning — gives more space to dense years
+    const dated = particles.filter(p => p.data.year);
+    const yearExtent = d3.extent(dated, p => p.data.year);
+    const yearMin = yearExtent[0];
+    const yearMax = yearExtent[1];
+    const xTarget = d3.scalePow().exponent(0.5)
+      .domain([yearMin, yearMax])
+      .range([width * 0.05, width * 0.95]);
+
+    const nodes = particles.map(p => ({
+      id: p.id,
+      x: p.data.year ? xTarget(p.data.year) + (Math.random() - 0.5) * 15 : width / 2,
+      y: height / 2 + (Math.random() - 0.5) * height * 0.5
+    }));
+
+    // Build a lookup for year-based x targets
+    const nodeYearTarget = {};
+    particles.forEach(p => {
+      nodeYearTarget[p.id] = p.data.year ? xTarget(p.data.year) : width * 0.5;
+    });
+
+    // Use ALL links for force (clustering) but only draw visibleLinks
+    const cfg = GENESIS_SIM_CONFIG;
+    const sim = d3.forceSimulation(nodes)
+      .force('x', d3.forceX(d => nodeYearTarget[d.id]).strength(cfg.xStrength))
+      .force('y', d3.forceY(height / 2).strength(cfg.yStrength))
+      .force('link', d3.forceLink(allLinks.map(l => ({ ...l }))).id(d => d.id)
+        .distance(cfg.linkDistance).strength(cfg.linkStrength))
+      .force('charge', d3.forceManyBody().strength(cfg.charge))
+      .force('collision', d3.forceCollide().radius(cfg.collisionRadius))
+      .stop();
+
+    for (let i = 0; i < cfg.ticks; i++) sim.tick();
+
+    // Store year labels for annotation overlay
+    genesisYearLabels = [];
+    const yearStep = 4;
+    for (let y = Math.ceil(yearMin / yearStep) * yearStep; y <= yearMax; y += yearStep) {
+      genesisYearLabels.push({ year: y, rawX: xTarget(y) });
+    }
+    // Always include first and last year
+    if (genesisYearLabels.length === 0 || genesisYearLabels[0].year !== yearMin) {
+      genesisYearLabels.unshift({ year: yearMin, rawX: xTarget(yearMin) });
+    }
+    if (genesisYearLabels[genesisYearLabels.length - 1].year !== yearMax) {
+      genesisYearLabels.push({ year: yearMax, rawX: xTarget(yearMax) });
+    }
+
+    genesisPositions = {};
+    nodes.forEach(n => {
+      genesisPositions[n.id] = { rawX: n.x, rawY: n.y, x: n.x, y: n.y };
+    });
+  }
+
   // ─── Layout Application ───────────────────────────
   function applyLayout(layoutName, instant) {
     currentLayout = layoutName;
@@ -183,6 +340,9 @@
     if (layoutName === 'network') {
       if (!networkPositions) precomputeNetworkLayout();
       window.IDELayouts.network(particles, width, height, { networkPositions });
+    } else if (layoutName === 'genesis') {
+      if (!genesisPositions) precomputeGenesisLayout();
+      window.IDELayouts.genesis(particles, width, height, { genesisPositions });
     } else {
       const fn = window.IDELayouts[layoutName];
       if (fn) fn(particles, width, height);

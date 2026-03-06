@@ -53,7 +53,7 @@
     <!-- Narrative steps -->
     <div id="steps">
 
-      <!-- Act 1: Introduction / Cloud -->
+      <!-- Act 1: Introduction / Genesis Network -->
       <div class="step" data-step="intro">
         <div class="step-content">
           <span class="step-kicker lang-de">Eine Datengeschichte</span>
@@ -63,8 +63,8 @@
             <span class="lang-en">The Institute for Digital Scholarly Editing</span>
           </h2>
           <p class="step-text">
-            <span class="lang-de">Jeder Punkt repräsentiert eine Publikation, einen Workshop, einen Beitrag zum Wissen über digitale Editionen. Gemeinsam erzählen sie die Geschichte einer Institution, die seit 2008 die digitale Editionswissenschaft im deutschsprachigen Raum prägt.</span>
-            <span class="lang-en">Each dot represents a publication, a workshop, a contribution to knowledge about digital editions. Together, they tell the story of an institution that has shaped digital scholarly editing in the German-speaking world since 2008.</span>
+            <span class="lang-de">Jeder Punkt ist eine Publikation, ein Workshop, ein Beitrag. Beobachten Sie, wie das IDE-Netzwerk seit 2008 gewachsen ist – Verbindungslinien zeigen geteilte Autorenschaft.</span>
+            <span class="lang-en">Each dot is a publication, a workshop, a contribution. Watch the IDE network grow since 2008 – connecting lines show shared authorship.</span>
           </p>
           <div class="step-stats">
             <span class="stat">
@@ -106,6 +106,10 @@
               <span class="legend-label lang-en">Blog post</span>
             </div>
           </div>
+          <p class="step-cta">
+            <span class="lang-de">↓ Scrollen Sie, um die Geschichte zu erkunden</span>
+            <span class="lang-en">↓ Scroll to explore the story</span>
+          </p>
         </div>
       </div>
 
@@ -287,11 +291,15 @@
         window.IDEParticles.init(document.getElementById('particles'), items);
         window.IDEScroll.init();
         window.IDEExplorer.init(items);
-        window.IDEParticles.applyLayout('cloud', false);
+        window.IDEParticles.applyLayout('genesis', false);
 
         if (loading) {
           loading.classList.add('fade-out');
-          setTimeout(() => { loading.style.display = 'none'; }, 700);
+          setTimeout(() => {
+            loading.style.display = 'none';
+            const indicator = document.getElementById('scroll-indicator');
+            if (indicator) indicator.classList.add('visible');
+          }, 700);
         }
       } catch (err) {
         console.error('[IDE] Bootstrap failed:', err);

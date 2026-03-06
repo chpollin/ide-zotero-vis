@@ -5,13 +5,14 @@
 | Technologie | Version | Zweck | CDN |
 |-------------|---------|-------|-----|
 | **D3.js** | 7 | Skalen, Force-Simulation, Geo-Projektion | `cdn.jsdelivr.net/npm/d3@7` |
-| **Scrollama** | latest | Scroll-Trigger (IntersectionObserver) | `unpkg.com/scrollama` |
-| **GSAP** | 3 | ScrollTrigger-Pinning | `cdn.jsdelivr.net/npm/gsap@3` |
+| **Scrollama** | 3.2 | Scroll-Trigger (IntersectionObserver) | `unpkg.com/scrollama@3.2.0` |
 | **Google Fonts** | — | Merriweather + Inter | Google Fonts CDN |
+
+> **GSAP wurde entfernt.** Das Side-by-Side Layout nutzt natives CSS `position: sticky` — GSAP ScrollTrigger-Pinning ist nicht mehr nötig. GSAP-CDN-Tags bleiben in `index.html`, werden aber nicht aktiv genutzt.
 
 ## Begründung: Warum kein React?
 
-1. **DOM-Kontrolle:** Scrollytelling braucht direkte DOM-Manipulation (Scrollama, GSAP)
+1. **DOM-Kontrolle:** Scrollytelling braucht direkte DOM-Manipulation (Scrollama)
 2. **Canvas:** Partikel-Engine rendert auf Canvas, nicht DOM — React bringt keinen Vorteil
 3. **Simplizität:** Kein Build-Step, keine Transpilation — direkt deploybar
 4. **Performance:** Weniger Overhead, kein Virtual DOM nötig
@@ -35,23 +36,25 @@
 
 ```
 src/
-├── data.js       # Zotero-API, Caching, Daten-Enrichment → window.IDEData
-├── layouts.js    # 5 shared Layout-Funktionen → window.IDELayouts
-├── particles.js  # Canvas-Engine, Render-Loop, Hover → window.IDEParticles
-├── scroll.js     # Scrollama + GSAP, Step-Handling → window.IDEScroll
-├── narrative.js  # Sprachumschaltung (DE/EN) → window.IDENarrative
-└── explorer.js   # Interaktiver Modus, Filter, Detail → window.IDEExplorer
+├── data.js         # Zotero-API, Caching, Daten-Enrichment → window.IDEData
+├── canvas-utils.js # Shared Canvas: Lerp, Draw, Hit-Detect, Tooltip → window.IDECanvasUtils
+├── layouts.js      # 6 shared Layout-Funktionen → window.IDELayouts
+├── particles.js    # Scrollytelling Canvas-Engine, Precomputation → window.IDEParticles
+├── scroll.js       # Scrollama Step-Handling, native sticky → window.IDEScroll
+├── narrative.js    # Sprachumschaltung (DE/EN) → window.IDENarrative
+└── explorer.js     # Interaktiver Modus, Filter, Detail → window.IDEExplorer
 ```
 
 ### Lade-Reihenfolge in index.html
 
 1. `data.js` (definiert API + PILLAR_COLORS + COLLECTION_MAP)
 2. `layouts.js` (Layout-Funktionen, von particles + explorer genutzt)
-3. `particles.js` (braucht IDEData + IDELayouts)
-4. `scroll.js` (braucht IDEParticles)
-5. `narrative.js` (unabhängig)
-6. `explorer.js` (braucht IDEData + IDELayouts)
-7. Bootstrap `<script>` (orchestriert Init-Aufrufe)
+3. `canvas-utils.js` (Shared Canvas-Utilities)
+4. `particles.js` (braucht IDEData + IDELayouts + IDECanvasUtils)
+5. `scroll.js` (braucht IDEParticles)
+6. `narrative.js` (unabhängig)
+7. `explorer.js` (braucht IDEData + IDELayouts + IDECanvasUtils)
+8. Bootstrap `<script>` (orchestriert Init-Aufrufe)
 
 ## Keine Dependencies
 

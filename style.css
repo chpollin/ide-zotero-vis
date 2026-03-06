@@ -199,8 +199,12 @@ html[lang="en"] .lang-de {
   align-items: center;
   gap: 0.5rem;
   pointer-events: none;
-  animation: fade-in 1s 1.5s both;
-  transition: opacity 0.6s ease;
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#scroll-indicator.visible {
+  opacity: 1;
 }
 
 #scroll-indicator .scroll-label {
@@ -217,7 +221,8 @@ html[lang="en"] .lang-de {
   height: 40px;
   background: var(--text-dim);
   position: relative;
-  animation: bounce-arrow 2s ease-in-out infinite;
+  animation: bounce-arrow 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
 }
 
 #scroll-indicator .scroll-arrow::after {
@@ -232,26 +237,23 @@ html[lang="en"] .lang-de {
   border-bottom: 1px solid var(--text-dim);
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
 @keyframes bounce-arrow {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(8px); }
+  50% { transform: translateY(5px); }
 }
 
-/* ---------- Scrollytelling Layout ---------- */
+/* ---------- Scrollytelling Layout (side-by-side) ---------- */
 #scrolly {
   position: relative;
+  display: flex;
 }
 
 #sticky-vis {
+  flex: 1;
   position: sticky;
   top: 0;
   height: 100vh;
-  width: 100%;
+  align-self: flex-start;
   z-index: 1;
   background: var(--bg-canvas);
 }
@@ -295,17 +297,25 @@ html[lang="en"] .lang-de {
   margin-top: 0.2rem;
 }
 
-/* ---------- Narrative Steps ---------- */
+/* ---------- Narrative Steps (left panel, 25%) ---------- */
 #steps {
   position: relative;
   z-index: 5;
-  padding: 30vh 0 50vh 0;
+  width: 25%;
+  min-width: 320px;
+  order: -1;
+  padding: 0;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
 }
 
 .step {
-  margin: 0 auto 75vh auto;
-  max-width: var(--step-max-width);
-  opacity: 0.12;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  max-width: none;
+  opacity: 0.25;
   transition: opacity var(--transition-medium);
   pointer-events: none;
 }
@@ -313,17 +323,15 @@ html[lang="en"] .lang-de {
 .step[data-step="intro"] {
   opacity: 1;
   pointer-events: auto;
-  margin-left: 5%;
-  margin-right: auto;
 }
 
 .step[data-step="intro"].is-exited {
-  opacity: 0.12;
+  opacity: 0.25;
   pointer-events: none;
 }
 
 .step:last-child {
-  margin-bottom: 0;
+  min-height: 80vh;
 }
 
 .step.is-active {
@@ -332,13 +340,8 @@ html[lang="en"] .lang-de {
 }
 
 .step-content {
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
   border-left: 3px solid var(--text-primary);
   padding: var(--step-padding);
-  box-shadow: var(--shadow-soft);
 }
 
 .step-kicker {
@@ -454,6 +457,22 @@ html[lang="en"] .lang-de {
   letter-spacing: 0.12em;
   color: var(--text-dim);
   margin-right: 0.3rem;
+}
+
+/* ---------- Step CTA (scroll hint) ---------- */
+.step-cta {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-top: 1.5rem;
+  animation: pulse-cta 3s ease-in-out infinite;
+}
+
+@keyframes pulse-cta {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 /* ---------- Cluster Labels (overlaid on canvas) ---------- */
@@ -809,9 +828,36 @@ html[lang="en"] .lang-de {
 
 @media (max-width: 768px) {
   :root { --step-max-width: 100%; --step-padding: 1.5rem 1.8rem; }
-  #steps { padding: 20vh 1rem 30vh 1rem; }
-  .step { max-width: 100%; margin-bottom: 50vh; }
-  .step[data-step="intro"] { margin-left: 1rem; }
+
+  /* Revert to stacked overlay layout on mobile */
+  #scrolly { display: block; }
+  #sticky-vis { width: 100%; align-self: auto; }
+  #steps {
+    width: 100%;
+    order: 0;
+    min-width: auto;
+    background: transparent;
+    border-right: none;
+    padding: 20vh 1rem 30vh 1rem;
+    margin-top: -100vh;
+  }
+  .step {
+    min-height: auto;
+    display: block;
+    max-width: 100%;
+    margin-bottom: 50vh;
+    opacity: 0.12;
+  }
+  .step[data-step="intro"] { margin-left: 1rem; opacity: 1; }
+  .step[data-step="intro"].is-exited { opacity: 0.12; }
+  .step-content {
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--text-primary);
+    box-shadow: var(--shadow-soft);
+  }
   .step-title { font-size: 1.5rem; }
   .step-text { font-size: 0.88rem; }
   .step-stats { flex-wrap: wrap; gap: 0.5rem; }

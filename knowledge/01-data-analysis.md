@@ -36,18 +36,18 @@ Die Collection-Zuordnung passiert in `data.js` via `COLLECTION_MAP`:
 
 ## Item-Typen → Partikelgröße
 
-Definiert in `data.js` (`RADIUS_MAP`):
+Definiert in `data.js` (`TYPE_RADIUS`):
 
 | Typ | Radius | Visueller Eindruck |
 |-----|--------|-------------------|
-| book | 8 | Größte Partikel |
-| journalArticle | 6 | Mittelgroß |
-| conferencePaper | 6 | Mittelgroß |
-| bookSection | 5 | Mittel |
-| presentation | 4 | Klein |
-| document | 4 | Klein |
-| blogPost | 3 | Kleinste |
-| webpage | 3 | Kleinste |
+| book | 11 | Größte Partikel |
+| journalArticle | 9 | Groß |
+| conferencePaper | 8 | Mittelgroß |
+| bookSection | 7 | Mittel |
+| presentation | 6 | Klein |
+| document | 6 | Klein |
+| blogPost | 5 | Kleinste |
+| webpage | 5 | Kleinste |
 
 ## Kern-Team (nach Häufigkeit)
 

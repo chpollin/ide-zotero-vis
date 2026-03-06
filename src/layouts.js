@@ -36,6 +36,8 @@
   const MAP_PLACE_SPREAD = 10;
   const MAP_NO_COORDS_SPREAD = 6;
 
+  const GENESIS_MARGIN = 60;
+
   // ─── Cloud (Phyllotaxis Spiral) ────────────────────
 
   function cloud(ps, w, h) {
@@ -221,8 +223,42 @@
     });
   }
 
+  // ─── Genesis (temporal network, x = year) ─────────
+
+  function genesis(ps, w, h, opts) {
+    const positions = opts && opts.genesisPositions;
+    if (!positions) return;
+
+    const allPos = Object.values(positions);
+    const xExtent = d3.extent(allPos, d => d.rawX);
+    const yExtent = d3.extent(allPos, d => d.rawY);
+
+    const scaleX = d3.scaleLinear().domain(xExtent).range([GENESIS_MARGIN, w - GENESIS_MARGIN]);
+    const scaleY = d3.scaleLinear().domain(yExtent).range([GENESIS_MARGIN, h - GENESIS_MARGIN]);
+
+    for (const id of Object.keys(positions)) {
+      const pos = positions[id];
+      pos.x = scaleX(pos.rawX);
+      pos.y = scaleY(pos.rawY);
+    }
+
+    for (const p of ps) {
+      const pos = positions[p.id];
+      if (pos) {
+        p.targetX = pos.x;
+        p.targetY = pos.y;
+        p.targetOpacity = 1;
+      } else {
+        p.targetX = w / 2;
+        p.targetY = h * 0.9;
+        p.targetOpacity = 0.2;
+      }
+      p.baseRadius = p.data.radius;
+    }
+  }
+
   // ─── Export ────────────────────────────────────────
 
-  window.IDELayouts = { cloud, timeline, clusters, network, map };
+  window.IDELayouts = { cloud, timeline, clusters, network, map, genesis };
 
 })();

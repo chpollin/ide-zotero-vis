@@ -6,10 +6,10 @@ Die Data Story folgt 6 Steps (definiert als `data-step` in `index.html`). Jeder 
 
 | Step | data-step | Layout | Inhalt |
 |------|-----------|--------|--------|
-| 1 | `intro` | cloud | Einstieg — Partikelwolke mit Stats + Legende |
+| 1 | `intro` | genesis | Temporaler Netzwerk-Graph (x = Jahr, Co-Autorenschaft) |
 | 2 | `timeline` | timeline | Chronologische Anordnung 2008–2024 |
 | 3 | `pillars` | clusters | Drei Säulen: Schools, RIDE, SIDE |
-| 4 | `network` | network | Co-Autorenschafts-Netzwerk |
+| 4 | `network` | network | Bipartiter Co-Autorenschafts-Graph |
 | 5 | `geography` | map | Geo-Projektion (Europa) |
 | 6 | `explorer` | cloud | Interaktiver Modus mit Filtern |
 
@@ -18,7 +18,7 @@ Die Data Story folgt 6 Steps (definiert als `data-step` in `index.html`). Jeder 
 Definiert in `scroll.js` als `LAYOUT_MAP`:
 ```js
 const LAYOUT_MAP = {
-  intro: 'cloud',
+  intro: 'genesis',
   timeline: 'timeline',
   pillars: 'clusters',
   network: 'network',
@@ -27,19 +27,29 @@ const LAYOUT_MAP = {
 };
 ```
 
-## Intro-Step Sonderbehandlung
+## Side-by-Side Layout
 
-- Sofort sichtbar (nicht erst ab `offset: 0.5`)
-- Enthält Stats-Zeile und Inline-Legende
-- Bekommt `.is-exited` beim Verlassen → faded aus
-- `margin-left: 5%` für Hero-Positionierung
+- **25% linkes Panel** (`#steps`): Narrative Textblöcke, immer sichtbar
+- **75% rechtes Canvas** (`#sticky-vis`): Partikelvisualisierung, `position: sticky`
+- Intro-Step ist sofort sichtbar (`opacity: 1`)
+- Andere Steps sind gedimmt (`opacity: 0.25`), `.is-active` → `opacity: 1`
+
+## Intro-Step (Genesis-Layout)
+
+- Zeigt temporalen Netzwerk-Graph: x-Achse = Jahr (sqrt-skaliert), y = force-directed
+- Verbindungslinien zeigen geteilte Autorenschaft (≥2 gemeinsame Autoren)
+- Partikel erscheinen chronologisch durch Stagger-Mechanismus
+- Jahr-Labels am unteren Canvas-Rand (2008, 2012, 2016, 2020, 2024)
+- Enthält Stats-Zeile (Anzahl Beiträge, Zeitraum, Sammlungen)
+- Enthält Inline-Legende (Farben + Größen)
+- Scroll-CTA am Ende: "↓ Scrollen Sie, um die Geschichte zu erkunden"
 
 ## Erzähltexte
 
 Zweisprachig (DE/EN) direkt in `index.html` mit CSS-Klassen `.lang-de` / `.lang-en`.
 
-### Step 1: Entstehung
-> Das IDE wurde 2008 gegründet. Jeder Punkt ist ein Beitrag — Bücher, Artikel, Konferenzbeiträge.
+### Step 1: Genesis-Netzwerk
+> Jeder Punkt ist eine Publikation, ein Workshop, ein Beitrag. Beobachten Sie, wie das IDE-Netzwerk seit 2008 gewachsen ist – Verbindungslinien zeigen geteilte Autorenschaft.
 
 ### Step 2: Chronologie
 > Auf der Zeitachse wird der Rhythmus der Produktion sichtbar.
@@ -59,5 +69,7 @@ Zweisprachig (DE/EN) direkt in `index.html` mit CSS-Klassen `.lang-de` / `.lang-
 ## Scroll-Indikator
 
 - `position: fixed`, `bottom: 2.5rem`, zentriert
-- Verschwindet bei erstem Step-Enter (`opacity: 0`)
-- Animierter Pfeil (CSS `@keyframes bounce`)
+- Sichtbarkeit über CSS-Klasse `.visible` (nicht inline opacity)
+- Wird nach Loading-Screen eingeblendet
+- Bei Step-Enter: Intro → `visible`, andere Steps → nicht `visible`
+- Animierter Pfeil: `@keyframes bounce-arrow` (5px translateY)

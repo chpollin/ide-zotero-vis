@@ -1,6 +1,6 @@
 /**
  * IDE Data Story - Scroll Controller
- * Scrollama + GSAP ScrollTrigger integration.
+ * Scrollama-based step detection with native CSS sticky layout.
  * Orchestrates layout transitions based on scroll position.
  */
 
@@ -10,7 +10,7 @@
   let scroller = null;
 
   const LAYOUT_MAP = {
-    'intro': 'cloud',
+    'intro': 'genesis',
     'timeline': 'timeline',
     'pillars': 'clusters',
     'network': 'network',
@@ -19,16 +19,6 @@
   };
 
   function init() {
-    gsap.registerPlugin(ScrollTrigger);
-
-    ScrollTrigger.create({
-      trigger: '#scrolly',
-      pin: '#sticky-vis',
-      start: 'top top',
-      end: 'bottom bottom',
-      pinSpacing: false
-    });
-
     scroller = scrollama();
     scroller
       .setup({
@@ -46,7 +36,6 @@
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         scroller.resize();
-        ScrollTrigger.refresh();
       }, 250);
     });
   }
@@ -63,8 +52,15 @@
       element.classList.remove('is-exited');
     }
 
+    // Scroll indicator: show on intro, hide on other steps
     const indicator = document.getElementById('scroll-indicator');
-    if (indicator) indicator.style.opacity = '0';
+    if (indicator) {
+      if (step === 'intro') {
+        indicator.classList.add('visible');
+      } else {
+        indicator.classList.remove('visible');
+      }
+    }
 
     const layout = LAYOUT_MAP[step];
     if (layout && window.IDEParticles) {
