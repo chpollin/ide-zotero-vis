@@ -15,6 +15,8 @@
   let width = 0, height = 0, dpr = 1;
   let hoveredParticle = null;
   let tooltipEl = null;
+  let explorerNetworkLinks = [];
+  let explorerNetworkPosMap = {};
   const activeFilters = { yearMin: 2008, yearMax: 2024, pillar: 'all' };
 
   // ─── Constants ──────────────────────────────────────
@@ -98,6 +100,7 @@
       radius: item.radius,
       baseRadius: item.radius,
       color: item.color,
+      shape: item.shape || 'circle',
       opacity: 0,
       targetOpacity: 1,
       data: item,
@@ -114,10 +117,21 @@
     explorerCtx.clearRect(0, 0, width, height);
     const now = performance.now();
 
+    // Draw network lines when in network layout
+    if (currentLayout === 'network' && explorerNetworkLinks.length > 0) {
+      drawExplorerNetworkLines();
+    }
+
     window.IDECanvasUtils.lerpParticles(explorerParticles, now, { threshold: 0 });
     window.IDECanvasUtils.drawParticles(explorerCtx, explorerParticles);
 
     requestAnimationFrame(renderExplorer);
+  }
+
+  function drawExplorerNetworkLines() {
+    var pMap = {};
+    explorerParticles.forEach(function (p) { pMap[p.id] = p; });
+    window.IDECanvasUtils.drawNetworkLines(explorerCtx, explorerNetworkLinks, pMap, { opacity: 0.1 });
   }
 
   // ─── Layouts ──────────────────────────────────────
@@ -137,9 +151,12 @@
     if (name === 'network') {
       computeExplorerNetwork(explorerParticles, width, height);
     } else {
+      explorerNetworkLinks = [];
       const fn = window.IDELayouts[name];
       if (fn) fn(explorerParticles, width, height);
     }
+
+    updateItemCount();
   }
 
   function computeExplorerNetwork(ps, w, h) {
@@ -168,6 +185,9 @@
       }
     });
 
+    // Store links for rendering
+    explorerNetworkLinks = links.map(l => ({ source: l.source, target: l.target }));
+
     const cfg = EXPLORER_NETWORK_CONFIG;
     const sim = d3.forceSimulation(nodes)
       .force('link', d3.forceLink(links).id(d => d.id).distance(cfg.linkDistance))
@@ -194,6 +214,19 @@
       }
       p.targetOpacity = 1;
     });
+  }
+
+  // ─── Item Count ─────────────────────────────────────
+
+  function updateItemCount() {
+    var el = document.getElementById('explorer-item-count');
+    if (!el) return;
+    var lang = (window.IDENarrative && window.IDENarrative.getLanguage()) || 'de';
+    var shown = explorerParticles.length;
+    var total = allItems.length;
+    el.textContent = lang === 'de'
+      ? shown + ' von ' + total + ' Items'
+      : shown + ' of ' + total + ' items';
   }
 
   // ─── Filters ──────────────────────────────────────

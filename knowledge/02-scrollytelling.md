@@ -2,18 +2,18 @@
 
 ## Kernprinzip
 
-Ein **sticky Visualisierungscontainer** (75% Breite) bleibt fixiert, während **narrative Textblöcke** in einer linken Spalte (25% Breite) scrollen. Jeder Textblock ("Step") triggert eine Transformation der Visualisierung.
+Ein **sticky Visualisierungscontainer** (75% Breite, rechts) bleibt fixiert, waehrend **narrative Textbloecke** in einer linken Spalte (25% Breite) scrollen. Jeder Textblock ("Step") triggert eine Transformation der Partikelvisualisierung.
 
 ```
-┌────────────┬──────────────────────────────┐
-│ Step 1/6   │                              │
-│ "Das IDE   │   [Sticky Visualisierung]    │
-│  wurde..." │      ○ ○  ○    ○             │
-│            │    ○    ○   ○     ○           │
-│ ─ ─ ─ ─ ─ │      ○  ○  ○   ○             │
-│ Step 2/6   │                              │
-│ (gedimmt)  │                              │
-└────────────┴──────────────────────────────┘
++------------+------------------------------+
+| Step 1/6   |                              |
+| "Das IDE   |   [Sticky Visualisierung]    |
+|  wurde..." |      o o  o    o             |
+|            |    o    o   o     o           |
+| - - - - -  |      o  o  o   o             |
+| Step 2/6   |                              |
+| (gedimmt)  |                              |
++------------+------------------------------+
   25% Panel      75% Canvas (sticky)
 ```
 
@@ -27,87 +27,82 @@ Ein **sticky Visualisierungscontainer** (75% Breite) bleibt fixiert, während **
 #sticky-vis { flex: 1; position: sticky; top: 0; height: 100vh; }
 ```
 
-- **Kein GSAP/ScrollTrigger** — natives CSS `position: sticky` reicht für Side-by-Side
+- **Kein GSAP/ScrollTrigger** -- natives CSS `position: sticky` reicht fuer Side-by-Side
 - Text-Panel ist immer sichtbar (kein Overlay)
-- Steps dimmen auf `opacity: 0.25`, aktiver Step auf `opacity: 1`
+- Steps dimmen auf `opacity: 0.25`, aktiver Step auf `opacity: 1` via `.is-active`
 
-### Mobile Fallback (≤768px)
+### Mobile Fallback (<=768px)
 
-Auf kleinen Bildschirmen wird zum gestapelten Overlay-Layout zurückgekehrt:
+Gestapeltes Overlay-Layout mit Backdrop-Blur:
 
 ```css
 @media (max-width: 768px) {
   #scrolly { display: block; }
-  #steps { width: 100%; margin-top: -100vh; } /* Overlay über Vis */
+  #steps { width: 100%; margin-top: -100vh; }
   .step-content { backdrop-filter: blur(20px); }
 }
 ```
 
-## Libraries
+## 6 Scroll-Steps -> Layout-Mapping
 
-### Scrollama.js
+Definiert in `src/scroll.js` als `LAYOUT_MAP`:
 
-- **Autor:** Russell Goldenberg (The Pudding)
-- **Prinzip:** IntersectionObserver-basiert, step-getriggert
-- **CDN:** `https://unpkg.com/scrollama`
-- **API:**
-  ```js
-  const scroller = scrollama();
-  scroller.setup({ step: '.step', offset: 0.5 })
-    .onStepEnter(({ element, index, direction }) => { ... })
-    .onStepExit(({ element, index, direction }) => { ... });
-  ```
-- **Vorteile:** Leichtgewichtig (~5KB), keine Dependencies, The-Pudding-erprobt
-- **Quelle:** https://github.com/russellsamora/scrollama
+| Step (data-step) | Layout-Funktion | Beschreibung |
+|------------------|----------------|--------------|
+| `intro` | `genesis` | Temporales Netzwerk (nutzt Timeline-Layout mit langsamem Stagger) |
+| `timeline` | `timeline` | Zeitachse: x=Datum, y=Pillar-Baender (Schools/RIDE/SIDE) |
+| `pillars` | `clusters` | Kompakte Spiralen, gruppiert nach 5 Pillars |
+| `network` | `network` | Co-Autorenschafts-Netzwerk (D3 force, vorberechnet) |
+| `geography` | `map` | Geo-Projektion (d3.geoMercator) mit Basiskarte |
+| `explorer` | `cloud` | Phyllotaxis-Spirale, Uebergang zum interaktiven Explorer |
 
-### CSS Scroll-Driven Animations
+### Genesis-Layout (Intro)
 
-- **Status:** Native Browser-API, Safari 26+ (Sep 2025)
-- **Zwei Typen:**
-  - `animation-timeline: scroll()` → an Scroll-Position gebunden
-  - `animation-timeline: view()` → an Element-Sichtbarkeit gebunden
-- **Nutzen:** Reveal-Effekte ohne JS, 60fps auf Compositor-Thread
-- **Einschränkung:** Kein Pinning, begrenzte Choreografie
+Das Intro nutzt das Timeline-Layout mit verlaengertem Partikel-Stagger (`GENESIS_PARTICLE_STAGGER = 25` vs. normal `PARTICLE_STAGGER = 12`), um ein progressives Erscheinen der Punkte zu erzeugen.
 
-## Best-Practice-Pattern (The Pudding)
+## Pillar-Filter (#scrolly-filter)
 
-### Responsive Scrollytelling
-
-```css
-#scrolly {
-  position: relative;
-  display: flex;           /* Side-by-side auf Desktop */
-}
-
-#sticky-vis {
-  flex: 1;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  align-self: flex-start;
-}
-
-.step {
-  min-height: 100vh;
-  opacity: 0.25;
-}
-
-.step.is-active {
-  opacity: 1;
-}
-```
-
-### Architektur
-
-1. **Separation of Concerns:** Scroll-Logik (`scroll.js`), Visualisierung (`particles.js`), Daten (`data.js`) getrennt
-2. **Debouncing:** `resize`-Events mit `setTimeout` (200ms)
-3. **Native Sticky:** CSS `position: sticky` statt GSAP ScrollTrigger für Pinning
-4. **Mobile:** Text-Schritte volle Breite, Vis als Hintergrund mit `margin-top: -100vh`
+- Positioniert im `#sticky-vis` Container, oben rechts
+- Buttons: Alle, Lehre (Schools), Rezensionen (RIDE), Forschung (SIDE), Events
+- Filtert ueber Opacity-Dimming (nicht-passende Items auf `opacity: 0.08`, Radius halbiert)
+- **Reset bei jedem Layout-Wechsel:** `resetPillarFilter()` wird in `applyLayout()` aufgerufen
+- Respektiert Netzwerk-Highlighting (ueberschreibt nicht die Kern-Forscher-Hervorhebung)
 
 ## Scroll-Indikator
 
 - `position: fixed`, `bottom: 2.5rem`, zentriert
-- Sichtbarkeit über CSS-Klasse `.visible` gesteuert (nicht inline `style.opacity`)
+- Sichtbarkeit ueber CSS-Klasse `.visible` gesteuert (nicht inline `style.opacity`)
 - Wird nach Loading-Screen eingeblendet, beim Verlassen des Intro-Steps ausgeblendet
-- Subtiler Bounce-Pfeil: `@keyframes bounce-arrow` (5px, `will-change: transform`)
-- **Kein CSS `animation: fade-in`** — war Ursache für Flacker-Bug (CSS `fill-mode: both` überschrieb JS inline opacity)
+- Bounce-Animation: `@keyframes bounce-arrow` (5px, `will-change: transform`)
+
+## Fortschrittsbalken
+
+- `#progress-bar` am oberen Fensterrand
+- Breite basiert auf Scroll-Position relativ zum `#scrolly`-Container
+- Update via `scroll`-Event in `scroll.js`
+
+## Scrollama
+
+- **Version:** 3.2.0 (unpkg CDN)
+- **Prinzip:** IntersectionObserver-basiert, step-getriggert
+- **Setup:** `step: '#steps .step'`, `offset: 0.5`, `progress: true`
+- **Callbacks:** `onStepEnter` (Layout-Wechsel + CSS-Klassen), `onStepExit` (Explorer-Deaktivierung)
+- **Resize:** Debounced (250ms), ruft `scroller.resize()` auf
+
+## SVG Annotation Layer
+
+Ein `<svg id="annotation-layer">` liegt ueber dem Canvas und zeigt Achsen, Gridlines und Labels:
+
+- **Timeline:** X-Achse (Jahre), Y-Labels (Pillar-Namen mit Farbe), vertikale Gridlines, "Ohne Datum"-Label
+- **Clusters:** Grosse Zahl + Pillar-Name ueber jedem Cluster
+- **Network:** Nachnamen der 8 Kern-Forscher als Labels
+- **Map:** Staedtenamen mit Itemanzahl, "Ohne Ortsangabe"-Label
+- Alle Labels sind zweisprachig (DE/EN) via `IDENarrative.getLanguage()`
+
+## Explorer-Aktivierung
+
+- Scroll-Step `explorer` loest `CustomEvent('explorer-activate')` aus
+- `#explorer-section` wird eingeblendet (`.hidden` entfernt)
+- Eigener Canvas (`#explorer-canvas`), eigene Partikel, eigene Filter (Jahr-Range, Pillar)
+- Layout-Buttons: Wolke, Zeit, Saeulen, Netzwerk, Karte
+- Deaktivierung bei Scroll nach oben (`direction === 'up'`)

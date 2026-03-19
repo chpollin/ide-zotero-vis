@@ -2,20 +2,19 @@
 
 ## 6 Scroll-Steps
 
-Die Data Story folgt 6 Steps (definiert als `data-step` in `index.html`). Jeder Step triggert ein anderes Canvas-Layout.
+Die Data Story folgt 6 Steps (definiert als `data-step` in `index.html`). Jeder Step triggert ein Canvas-Layout via `LAYOUT_MAP` in `scroll.js`.
 
-| Step | data-step | Layout | Inhalt |
-|------|-----------|--------|--------|
-| 1 | `intro` | genesis | Temporaler Netzwerk-Graph (x = Jahr, Co-Autorenschaft) |
-| 2 | `timeline` | timeline | Chronologische Anordnung 2008–2024 |
-| 3 | `pillars` | clusters | Drei Säulen: Schools, RIDE, SIDE |
-| 4 | `network` | network | Bipartiter Co-Autorenschafts-Graph |
-| 5 | `geography` | map | Geo-Projektion (Europa) |
-| 6 | `explorer` | cloud | Interaktiver Modus mit Filtern |
+| # | data-step | Layout | Beschreibung |
+|---|-----------|--------|--------------|
+| 1 | `intro` | genesis | Ruft `IDELayouts.timeline()` mit langsamerem Stagger (`GENESIS_PARTICLE_STAGGER=25ms`) auf. Zeigt Pillar-Swim-Lanes + Jahresachse. Keine Netzwerk-Linien. |
+| 2 | `timeline` | timeline | Pillar-Swim-Lanes (Schools, RIDE, SIDE). Items pro Jahr innerhalb jedes Bands gebinnt. Sekundaere Items (Events, Varia) unten. `PARTICLE_STAGGER=12ms`. |
+| 3 | `pillars` | clusters | 5 kompakte Spiralcluster an festen Positionen. Anzahl + Pillar-Labels als SVG-Annotationen. Keine Zeitachse. |
+| 4 | `network` | network | Bipartiter Force-Graph (Items + Creators). 8 Kernforscher hervorgehoben (Opacity 1), Rest gedimmt (0.3). Creator-Centroid-Labels via SVG. |
+| 5 | `geography` | map | `d3.geoMercator`, Center `[10.5, 50.5]`. TopoJSON-Basiskarte. Stadtlabels fuer Orte mit >= 2 Items. Items ohne Koordinaten in horizontaler Reihe unten. |
+| 6 | `explorer` | cloud | Aktiviert `#explorer-section` mit eigenem Canvas, Layout-Buttons, Jahr-/Pillar-Filtern, Detail-Panel. |
 
-## Step → Layout Mapping
+## LAYOUT_MAP (scroll.js)
 
-Definiert in `scroll.js` als `LAYOUT_MAP`:
 ```js
 const LAYOUT_MAP = {
   intro: 'genesis',
@@ -27,49 +26,46 @@ const LAYOUT_MAP = {
 };
 ```
 
+Hinweis: Es gibt kein separates `genesis`-Layout in `layouts.js`. Der genesis-Step ruft `IDELayouts.timeline()` auf, aber mit langsamerem Stagger (`25ms` statt `12ms`).
+
 ## Side-by-Side Layout
 
-- **25% linkes Panel** (`#steps`): Narrative Textblöcke, immer sichtbar
-- **75% rechtes Canvas** (`#sticky-vis`): Partikelvisualisierung, `position: sticky`
-- Intro-Step ist sofort sichtbar (`opacity: 1`)
-- Andere Steps sind gedimmt (`opacity: 0.25`), `.is-active` → `opacity: 1`
+- **25% linkes Panel** (`#steps`): Narrative Textbloecke, `order: -1`, weisser Hintergrund, `border-right`
+- **75% rechtes Canvas** (`#sticky-vis`): Partikelvisualisierung, `position: sticky; top: 0; height: 100vh`
+- Intro-Step sofort sichtbar (`opacity: 1`), bekommt `.is-exited` beim Wegscrollen
+- Andere Steps gedimmt (`opacity: 0.25`), `.is-active` setzt `opacity: 1`
 
-## Intro-Step (Genesis-Layout)
+## Scrollama-Konfiguration
 
-- Zeigt temporalen Netzwerk-Graph: x-Achse = Jahr (sqrt-skaliert), y = force-directed
-- Verbindungslinien zeigen geteilte Autorenschaft (≥2 gemeinsame Autoren)
-- Partikel erscheinen chronologisch durch Stagger-Mechanismus
-- Jahr-Labels am unteren Canvas-Rand (2008, 2012, 2016, 2020, 2024)
-- Enthält Stats-Zeile (Anzahl Beiträge, Zeitraum, Sammlungen)
-- Enthält Inline-Legende (Farben + Größen)
-- Scroll-CTA am Ende: "↓ Scrollen Sie, um die Geschichte zu erkunden"
+- `offset: 0.5` (Trigger bei 50% Viewport-Hoehe)
+- `progress: true` aktiviert
+- Resize-Debounce: 250ms
 
-## Erzähltexte
+## Pillar-Filter (Scrollytelling)
 
-Zweisprachig (DE/EN) direkt in `index.html` mit CSS-Klassen `.lang-de` / `.lang-en`.
-
-### Step 1: Genesis-Netzwerk
-> Jeder Punkt ist eine Publikation, ein Workshop, ein Beitrag. Beobachten Sie, wie das IDE-Netzwerk seit 2008 gewachsen ist – Verbindungslinien zeigen geteilte Autorenschaft.
-
-### Step 2: Chronologie
-> Auf der Zeitachse wird der Rhythmus der Produktion sichtbar.
-
-### Step 3: Drei Säulen
-> Schools, RIDE und SIDE — drei Säulen tragen das IDE.
-
-### Step 4: Netzwerk
-> Hinter den Publikationen steht ein Netzwerk von Menschen.
-
-### Step 5: Geografie
-> Von Köln über Wien bis Graz — die geografische Reichweite des IDE.
-
-### Step 6: Explorer
-> Erkunden Sie die Daten selbst.
+Buttons in `#scrolly-filter` (CSS-Klasse `.sf-btn`):
+- **Alle**, **Lehre** (Schools), **Rezensionen** (RIDE), **Forschung** (SIDE), **Events**
+- `resetPillarFilter()` wird bei jedem Layout-Wechsel in `applyLayout()` aufgerufen
+- Nicht-passende Partikel: `targetOpacity: 0.08`, `baseRadius * 0.5`
 
 ## Scroll-Indikator
 
 - `position: fixed`, `bottom: 2.5rem`, zentriert
-- Sichtbarkeit über CSS-Klasse `.visible` (nicht inline opacity)
-- Wird nach Loading-Screen eingeblendet
-- Bei Step-Enter: Intro → `visible`, andere Steps → nicht `visible`
-- Animierter Pfeil: `@keyframes bounce-arrow` (5px translateY)
+- CSS-Klasse `.visible` steuert Sichtbarkeit
+- Bei Step-Enter: Intro zeigt Indikator, andere Steps verbergen ihn
+- Animierter Pfeil: `@keyframes bounce-arrow` (5px translateY, 2.5s)
+
+## Fortschrittsbalken
+
+- `#progress-bar`: `position: fixed; top: 0`, 2px Hoehe
+- Berechnung ueber Scroll-Position relativ zum `#scrolly`-Container
+- Update via `window.addEventListener('scroll', updateProgressBar)`
+
+## Explorer-Aktivierung
+
+- `handleStepEnter` mit `step === 'explorer'`: `#explorer-section` wird eingeblendet, `explorer-activate` Event
+- `handleStepExit` mit `step === 'explorer'` + `direction === 'up'`: Deaktivierung, `explorer-deactivate` Event
+
+## Erzaehltexte
+
+Zweisprachig (DE/EN) direkt in `index.html` mit CSS-Klassen `.lang-de` / `.lang-en`. Sprachumschaltung via `<html lang="de|en">`.

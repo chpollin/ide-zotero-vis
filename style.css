@@ -263,6 +263,45 @@ html[lang="en"] .lang-de {
   height: 100%;
 }
 
+/* ─── Scrollytelling Pillar Filter ──────────────── */
+#scrolly-filter {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 2px;
+  z-index: 10;
+  background: rgba(245,245,243,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 4px;
+  padding: 3px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.sf-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.15s, color 0.15s;
+}
+.sf-btn:hover { background: rgba(0,0,0,0.05); }
+.sf-btn.active {
+  background: var(--text-primary);
+  color: var(--bg);
+}
+.sf-btn[data-pillar]:not([data-pillar="all"]).active {
+  background: var(--sf-color, var(--text-primary));
+  color: #fff;
+}
+
 #annotation-layer {
   position: absolute;
   top: 0;
@@ -271,6 +310,47 @@ html[lang="en"] .lang-de {
   height: 100%;
   pointer-events: none;
   z-index: 2;
+  overflow: visible;
+}
+
+/* ─── SVG Annotation Styles ─────────────────────── */
+.axis .domain { stroke: rgba(0,0,0,0.1); }
+.axis .tick line { stroke: rgba(0,0,0,0.1); }
+.axis .tick text {
+  fill: rgba(0,0,0,0.35);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.65rem;
+}
+.axis-y-label {
+  fill: rgba(0,0,0,0.3);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.gridline {
+  stroke: rgba(0,0,0,0.06);
+  stroke-dasharray: 2,4;
+}
+.annotation-label {
+  fill: rgba(0,0,0,0.35);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.annotation-label-lg {
+  fill: rgba(0,0,0,0.25);
+  font-family: 'Merriweather', serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+.annotation-label-pillar {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 #tooltip {
@@ -433,19 +513,31 @@ html[lang="en"] .lang-de {
   flex-shrink: 0;
 }
 
-.legend-dot-lg {
-  width: 16px;
-  height: 16px;
-}
+.legend-dot-lg { width: 16px; height: 16px; }
+.legend-dot-md { width: 10px; height: 10px; }
+.legend-dot-sm { width: 6px; height: 6px; }
 
-.legend-dot-md {
+/* Shape legend icons */
+.legend-shape-icon {
+  display: inline-block;
   width: 10px;
   height: 10px;
+  flex-shrink: 0;
+  background: var(--text-dim);
 }
-
-.legend-dot-sm {
-  width: 6px;
-  height: 6px;
+.legend-square { border-radius: 1px; }
+.legend-circle { border-radius: 50%; }
+.legend-diamond {
+  width: 8px; height: 8px;
+  transform: rotate(45deg);
+  border-radius: 1px;
+}
+.legend-triangle {
+  width: 0; height: 0;
+  background: none;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid var(--text-dim);
 }
 
 .legend-label {
@@ -568,6 +660,15 @@ html[lang="en"] .lang-de {
 
 .layout-btn.active + .layout-btn {
   border-left-color: var(--text-primary);
+}
+
+.explorer-count {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 0.8rem;
+  vertical-align: middle;
 }
 
 #filter-controls {

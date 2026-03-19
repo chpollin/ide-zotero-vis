@@ -15,35 +15,22 @@
   let hoveredParticle = null;
   let networkData = null;
   let networkPositions = null;
-  let genesisPositions = null;
-  let genesisLinks = null;
-  let genesisYearLabels = [];
   let particleMap = {};
   let overlayElements = [];
   let tooltipEl = null;
+  let mapProjection = null;
 
   // ─── Constants ────────────────────────────────────────
   const PARTICLE_STAGGER = 12;
-  const LABEL_OFFSET_Y = 50;
   const HOVER_RADIUS_BOOST = 3;
   const NETWORK_SIM_CONFIG = {
     linkDistance: 40,
     linkStrength: 0.3,
-    charge: -60,
+    charge: -120,
     ticks: 200,
     collisionRadius: 8
   };
-  const GENESIS_SIM_CONFIG = {
-    xStrength: 0.6,
-    yStrength: 0.04,
-    linkDistance: 40,
-    linkStrength: 0.06,
-    charge: -150,
-    collisionRadius: 12,
-    ticks: 300
-  };
-  const GENESIS_LINE_OPACITY = 0.08;
-  const GENESIS_MIN_SHARED_CREATORS = 2;
+  const GENESIS_PARTICLE_STAGGER = 25;
 
   // ─── Initialization ──────────────────────────────────
   function init(canvasEl, items) {
@@ -63,6 +50,7 @@
       radius: item.radius,
       baseRadius: item.radius,
       color: item.color,
+      shape: item.shape || 'circle',
       opacity: 0,
       targetOpacity: 1,
       data: item,
@@ -76,13 +64,18 @@
 
     networkData = window.IDEData.buildCoAuthorshipLinks(items);
     precomputeNetworkLayout();
-    precomputeGenesisLayout();
+
+    // Preload map topology in background
+    window.IDECanvasUtils.loadMapTopology();
 
     requestAnimationFrame(render);
 
     canvas.addEventListener('mousemove', onMouseMove);
     canvas.addEventListener('mouseleave', onMouseLeave);
     canvas.addEventListener('click', onClick);
+
+    // Pillar filter buttons in scrollytelling
+    setupScrollyFilter();
 
     let resizeTimer;
     window.addEventListener('resize', () => {
@@ -104,6 +97,7 @@
 
   function onResize() {
     resize();
+    window.IDECanvasUtils.invalidateMapCache();
     applyLayout(currentLayout, true);
   }
 
@@ -112,18 +106,16 @@
     ctx.clearRect(0, 0, width, height);
     const now = performance.now();
 
+    if (currentLayout === 'map' && mapProjection) {
+      window.IDECanvasUtils.drawBaseMap(ctx, mapProjection, width, height);
+    }
+
     if (currentLayout === 'network' && networkPositions) {
       drawNetworkLines();
-    } else if (currentLayout === 'genesis' && genesisLinks) {
-      drawGenesisLines();
     }
 
     window.IDECanvasUtils.lerpParticles(particles, now, { threshold: 0.5 });
     window.IDECanvasUtils.drawParticles(ctx, particles);
-
-    if (currentLayout === 'genesis' && genesisYearLabels.length > 0) {
-      drawYearLabels();
-    }
 
     requestAnimationFrame(render);
   }
@@ -132,7 +124,7 @@
     if (!networkPositions || !networkData) return;
 
     ctx.save();
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
 
@@ -149,47 +141,6 @@
     ctx.restore();
   }
 
-  function drawGenesisLines() {
-    if (!genesisLinks) return;
-
-    ctx.save();
-    ctx.strokeStyle = `rgba(0, 0, 0, ${GENESIS_LINE_OPACITY})`;
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-
-    for (const link of genesisLinks) {
-      const s = particleMap[link.source];
-      const t = particleMap[link.target];
-      if (!s || !t || s.opacity < 0.1 || t.opacity < 0.1) continue;
-
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(t.x, t.y);
-    }
-
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawYearLabels() {
-    if (!genesisPositions) return;
-
-    // Scale labels the same way genesis layout scales positions
-    const allPos = Object.values(genesisPositions);
-    const xExtent = d3.extent(allPos, d => d.rawX);
-    const scaleX = d3.scaleLinear().domain(xExtent).range([60, width - 60]);
-
-    ctx.save();
-    ctx.font = '600 0.6rem Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-
-    const y = height - 25;
-    for (const label of genesisYearLabels) {
-      const x = scaleX(label.rawX);
-      ctx.fillText(label.year, x, y);
-    }
-    ctx.restore();
-  }
 
   // ─── Network Precomputation ────────────────────────
   function precomputeNetworkLayout() {
@@ -239,157 +190,253 @@
     });
   }
 
-  // ─── Genesis Precomputation ─────────────────────────
-  function precomputeGenesisLayout() {
-    // Build item-to-item co-authorship with weight (shared creator count)
-    const creatorToItems = {};
-    particles.forEach(p => {
-      p.data.creators.forEach(name => {
-        if (name === 'IDE') return;
-        if (!creatorToItems[name]) creatorToItems[name] = [];
-        creatorToItems[name].push(p.id);
-      });
-    });
-
-    // Count shared creators per item pair
-    const pairWeight = {};
-    Object.values(creatorToItems).forEach(ids => {
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          const key = ids[i] < ids[j] ? `${ids[i]}|${ids[j]}` : `${ids[j]}|${ids[i]}`;
-          pairWeight[key] = (pairWeight[key] || 0) + 1;
-        }
-      }
-    });
-
-    // Only keep links with >= GENESIS_MIN_SHARED_CREATORS shared authors
-    const allLinks = [];
-    const visibleLinks = [];
-    for (const [key, weight] of Object.entries(pairWeight)) {
-      const [source, target] = key.split('|');
-      allLinks.push({ source, target, weight });
-      if (weight >= GENESIS_MIN_SHARED_CREATORS) {
-        visibleLinks.push({ source, target, weight });
-      }
-    }
-    genesisLinks = visibleLinks; // Only draw strong links
-
-    // Sqrt-scaled x positioning — gives more space to dense years
-    const dated = particles.filter(p => p.data.year);
-    const yearExtent = d3.extent(dated, p => p.data.year);
-    const yearMin = yearExtent[0];
-    const yearMax = yearExtent[1];
-    const xTarget = d3.scalePow().exponent(0.5)
-      .domain([yearMin, yearMax])
-      .range([width * 0.05, width * 0.95]);
-
-    const nodes = particles.map(p => ({
-      id: p.id,
-      x: p.data.year ? xTarget(p.data.year) + (Math.random() - 0.5) * 15 : width / 2,
-      y: height / 2 + (Math.random() - 0.5) * height * 0.5
-    }));
-
-    // Build a lookup for year-based x targets
-    const nodeYearTarget = {};
-    particles.forEach(p => {
-      nodeYearTarget[p.id] = p.data.year ? xTarget(p.data.year) : width * 0.5;
-    });
-
-    // Use ALL links for force (clustering) but only draw visibleLinks
-    const cfg = GENESIS_SIM_CONFIG;
-    const sim = d3.forceSimulation(nodes)
-      .force('x', d3.forceX(d => nodeYearTarget[d.id]).strength(cfg.xStrength))
-      .force('y', d3.forceY(height / 2).strength(cfg.yStrength))
-      .force('link', d3.forceLink(allLinks.map(l => ({ ...l }))).id(d => d.id)
-        .distance(cfg.linkDistance).strength(cfg.linkStrength))
-      .force('charge', d3.forceManyBody().strength(cfg.charge))
-      .force('collision', d3.forceCollide().radius(cfg.collisionRadius))
-      .stop();
-
-    for (let i = 0; i < cfg.ticks; i++) sim.tick();
-
-    // Store year labels for annotation overlay
-    genesisYearLabels = [];
-    const yearStep = 4;
-    for (let y = Math.ceil(yearMin / yearStep) * yearStep; y <= yearMax; y += yearStep) {
-      genesisYearLabels.push({ year: y, rawX: xTarget(y) });
-    }
-    // Always include first and last year
-    if (genesisYearLabels.length === 0 || genesisYearLabels[0].year !== yearMin) {
-      genesisYearLabels.unshift({ year: yearMin, rawX: xTarget(yearMin) });
-    }
-    if (genesisYearLabels[genesisYearLabels.length - 1].year !== yearMax) {
-      genesisYearLabels.push({ year: yearMax, rawX: xTarget(yearMax) });
-    }
-
-    genesisPositions = {};
-    nodes.forEach(n => {
-      genesisPositions[n.id] = { rawX: n.x, rawY: n.y, x: n.x, y: n.y };
-    });
-  }
 
   // ─── Layout Application ───────────────────────────
   function applyLayout(layoutName, instant) {
     currentLayout = layoutName;
+    resetPillarFilter();
 
+    const stagger = layoutName === 'genesis' ? GENESIS_PARTICLE_STAGGER : PARTICLE_STAGGER;
     particles.forEach((p, i) => {
-      p.delay = instant ? 0 : i * PARTICLE_STAGGER;
+      p.delay = instant ? 0 : i * stagger;
       p.startTime = 0;
     });
 
+    let layoutResult = null;
+
     if (layoutName === 'network') {
       if (!networkPositions) precomputeNetworkLayout();
-      window.IDELayouts.network(particles, width, height, { networkPositions });
+      layoutResult = window.IDELayouts.network(particles, width, height, { networkPositions });
+      applyNetworkHighlighting();
     } else if (layoutName === 'genesis') {
-      if (!genesisPositions) precomputeGenesisLayout();
-      window.IDELayouts.genesis(particles, width, height, { genesisPositions });
+      // Genesis reuses the timeline layout with slower progressive reveal
+      layoutResult = window.IDELayouts.timeline(particles, width, height);
     } else {
       const fn = window.IDELayouts[layoutName];
-      if (fn) fn(particles, width, height);
+      if (fn) layoutResult = fn(particles, width, height);
+    }
+
+    // Store map projection for base map rendering
+    if (layoutName === 'map' && layoutResult && layoutResult.projection) {
+      mapProjection = layoutResult.projection;
+      window.IDECanvasUtils.invalidateMapCache();
+    } else if (layoutName !== 'map') {
+      mapProjection = null;
     }
 
     clearOverlays();
+    drawAnnotations(layoutName, layoutResult);
+  }
 
-    if (layoutName === 'clusters') {
-      addClusterLabels();
+  // ─── Annotation Rendering ─────────────────────────
+  function drawAnnotations(layoutName, layoutResult) {
+    if (!window.IDEAnnotations) return;
+    window.IDEAnnotations.clear();
+
+    if ((layoutName === 'timeline' || layoutName === 'genesis') && layoutResult && layoutResult.scales) {
+      drawTimelineAnnotations(layoutResult);
+    } else if (layoutName === 'clusters' && layoutResult && layoutResult.clusterPositions) {
+      drawClusterAnnotations(layoutResult);
+    } else if (layoutName === 'network') {
+      drawNetworkAnnotations();
+    } else if (layoutName === 'map' && layoutResult) {
+      drawMapAnnotations(layoutResult);
     }
+  }
+
+  function drawTimelineAnnotations(result) {
+    const { scales, margin, undated } = result;
+    var pillarColors = window.IDEData.PILLAR_COLORS;
+    var pillarLabels = window.IDEData.PILLAR_LABELS || {};
+    var lang = (window.IDENarrative && window.IDENarrative.getLanguage()) || 'de';
+
+    // X axis (years)
+    window.IDEAnnotations.drawXAxis(scales.x, width, height, {
+      ticks: d3.timeYear.every(2),
+      tickFormat: d3.timeFormat('%Y'),
+      margin: { bottom: margin.bottom }
+    });
+
+    // Y axis (semantic pillar labels with colours)
+    var domain = scales.y.domain();
+    var labels = [];
+    domain.forEach(function (pillar) {
+      var bandY = scales.y(pillar);
+      var bandH = scales.y.bandwidth();
+      var labelObj = pillarLabels[pillar];
+      var text = labelObj ? (labelObj[lang] || labelObj.short || pillar) : pillar;
+      labels.push({
+        text: text,
+        x: margin.left - 8,
+        y: bandY + bandH / 2,
+        anchor: 'end',
+        className: 'annotation-label-pillar',
+        color: pillarColors[pillar] || 'rgba(0,0,0,0.4)'
+      });
+    });
+    window.IDEAnnotations.drawLabels(labels);
+
+    // Gridlines
+    window.IDEAnnotations.drawGridlines(scales.x, width, height, 'vertical', {
+      ticks: d3.timeYear.every(2),
+      margin: { top: margin.top, bottom: margin.bottom }
+    });
+
+    // Undated cluster label
+    if (undated && undated.count > 0) {
+      var lang = (window.IDENarrative && window.IDENarrative.getLanguage()) || 'de';
+      var text = lang === 'de'
+        ? 'Ohne Datum (' + undated.count + ')'
+        : 'Undated (' + undated.count + ')';
+      window.IDEAnnotations.drawLabels([{
+        text: text,
+        x: undated.x,
+        y: undated.y - 40,
+        anchor: 'middle',
+        fontSize: '0.6rem'
+      }]);
+    }
+  }
+
+  function drawClusterAnnotations(result) {
+    var lang = (window.IDENarrative && window.IDENarrative.getLanguage()) || 'de';
+    var pillarColors = window.IDEData.PILLAR_COLORS;
+    var pillarLabels = window.IDEData.PILLAR_LABELS || {};
+    var positions = result.clusterPositions;
+    var groups = result.groups;
+
+    var labels = [];
+    Object.keys(positions).forEach(function (pillar) {
+      var pos = positions[pillar];
+      var count = groups[pillar] || 0;
+      if (count === 0) return;
+
+      var labelObj = pillarLabels[pillar];
+      var text = labelObj ? (labelObj[lang] || pillar) : pillar;
+
+      // Large count number above cluster
+      labels.push({
+        text: String(count),
+        x: width * pos.x,
+        y: height * pos.y - 55,
+        anchor: 'middle',
+        className: 'annotation-label-lg',
+        color: pillarColors[pillar] || 'rgba(0,0,0,0.2)'
+      });
+
+      // Pillar name below count
+      labels.push({
+        text: text,
+        x: width * pos.x,
+        y: height * pos.y - 35,
+        anchor: 'middle',
+        className: 'annotation-label-pillar',
+        color: pillarColors[pillar] || 'rgba(0,0,0,0.4)'
+      });
+    });
+    window.IDEAnnotations.drawLabels(labels);
+  }
+
+
+  function drawNetworkAnnotations() {
+    if (!networkPositions) return;
+    var coreResearchers = (window.IDEData && window.IDEData.CORE_RESEARCHERS) || [];
+    if (coreResearchers.length === 0) return;
+
+    // For each core researcher, compute centroid of their items
+    var creatorItems = {};
+    particles.forEach(function (p) {
+      p.data.creators.forEach(function (name) {
+        if (coreResearchers.indexOf(name) === -1) return;
+        if (!creatorItems[name]) creatorItems[name] = [];
+        creatorItems[name].push(p);
+      });
+    });
+
+    var labels = [];
+    Object.keys(creatorItems).forEach(function (name) {
+      var items = creatorItems[name];
+      var avgX = d3.mean(items, function (p) { return p.targetX; });
+      var avgY = d3.mean(items, function (p) { return p.targetY; });
+      // Use last name only for compact labels
+      var shortName = name.split(' ').pop();
+      labels.push({
+        text: shortName,
+        x: avgX,
+        y: avgY - 14,
+        anchor: 'middle',
+        className: 'annotation-label',
+        fontSize: '0.65rem',
+        color: 'rgba(0,0,0,0.5)'
+      });
+    });
+    window.IDEAnnotations.drawLabels(labels);
+  }
+
+  function drawMapAnnotations(result) {
+    if (!result || !result.projection) return;
+
+    var projection = result.projection;
+    var placeCounts = result.placeCounts || {};
+
+    // City labels for places with ≥2 items
+    var labels = [];
+    Object.keys(placeCounts).forEach(function (place) {
+      var info = placeCounts[place];
+      if (info.count < 2 || !info.coords) return;
+      var projected = projection(info.coords);
+      if (!projected) return;
+      labels.push({
+        text: place + ' (' + info.count + ')',
+        x: projected[0] + 12,
+        y: projected[1] - 8,
+        anchor: 'start',
+        fontSize: '0.6rem',
+        color: 'rgba(0,0,0,0.4)'
+      });
+    });
+    window.IDEAnnotations.drawLabels(labels);
+
+    // Without coords label
+    if (result.withoutCoordsCount > 0) {
+      var lang = (window.IDENarrative && window.IDENarrative.getLanguage()) || 'de';
+      var text = lang === 'de'
+        ? 'Ohne Ortsangabe (' + result.withoutCoordsCount + ')'
+        : 'No location (' + result.withoutCoordsCount + ')';
+      window.IDEAnnotations.drawLabels([{
+        text: text,
+        x: width * 0.85,
+        y: height * 0.85 - 35,
+        anchor: 'middle',
+        fontSize: '0.6rem',
+        color: 'rgba(0,0,0,0.25)'
+      }]);
+    }
+  }
+
+  // ─── Network Highlighting ──────────────────────────
+  function applyNetworkHighlighting() {
+    var coreResearchers = (window.IDEData && window.IDEData.CORE_RESEARCHERS) || [];
+    if (coreResearchers.length === 0) return;
+
+    particles.forEach(function (p) {
+      var isCore = p.data.creators.some(function (name) {
+        return coreResearchers.indexOf(name) !== -1;
+      });
+      if (isCore) {
+        p.targetOpacity = 1;
+        p.baseRadius = p.data.radius;
+      } else {
+        p.targetOpacity = 0.3;
+        p.baseRadius = p.data.radius * 0.6;
+      }
+    });
   }
 
   // ─── Overlay Management ───────────────────────────
   function clearOverlays() {
     overlayElements.forEach(el => el.remove());
     overlayElements = [];
-
-    const svg = document.getElementById('annotation-layer');
-    if (svg) svg.innerHTML = '';
-  }
-
-  function addClusterLabels() {
-    const stickyVis = canvas.parentElement;
-    const groups = { Schools: [], RIDE: [], SIDE: [] };
-    const pillarColors = window.IDEData.PILLAR_COLORS;
-
-    particles.forEach(p => {
-      if (groups[p.data.pillar]) groups[p.data.pillar].push(p);
-    });
-
-    for (const name of Object.keys(groups)) {
-      const items = groups[name];
-      if (items.length === 0) continue;
-
-      const avgX = d3.mean(items, p => p.targetX);
-      const minY = d3.min(items, p => p.targetY);
-
-      const label = document.createElement('div');
-      label.className = 'cluster-label';
-      label.style.left = `${avgX}px`;
-      label.style.top = `${minY - LABEL_OFFSET_Y}px`;
-      label.style.color = pillarColors[name] || 'var(--text-dim)';
-      label.innerHTML = `<span class="cluster-count">${items.length}</span>${name}`;
-
-      stickyVis.appendChild(label);
-      overlayElements.push(label);
-    }
   }
 
   // ─── Mouse Interaction ────────────────────────────
@@ -455,6 +502,42 @@
 
   function hideTooltip() {
     if (tooltipEl) tooltipEl.style.display = 'none';
+  }
+
+  // ─── Scrollytelling Pillar Filter ─────────────────
+  let activePillarFilter = 'all';
+
+  function setupScrollyFilter() {
+    document.querySelectorAll('.sf-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.sf-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        activePillarFilter = btn.dataset.pillar;
+        applyPillarFilter();
+      });
+    });
+  }
+
+  function applyPillarFilter() {
+    particles.forEach(function (p) {
+      if (activePillarFilter === 'all' || p.data.pillar === activePillarFilter) {
+        // Don't override network highlighting
+        if (currentLayout !== 'network') {
+          p.targetOpacity = 1;
+          p.baseRadius = p.data.radius;
+        }
+      } else {
+        p.targetOpacity = 0.08;
+        p.baseRadius = p.data.radius * 0.5;
+      }
+    });
+  }
+
+  function resetPillarFilter() {
+    activePillarFilter = 'all';
+    document.querySelectorAll('.sf-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.pillar === 'all');
+    });
   }
 
   // ─── Public API ───────────────────────────────────

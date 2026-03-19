@@ -1,149 +1,132 @@
 # Visual Design
 
-## Ästhetik: Light Editorial (inspiriert von editopia 2026)
+## Aesthetik: Light Editorial
 
-Helles, reduziertes Design mit editorischer Geometrie. Klare Typografie, minimale Schatten, geometrische Akzente statt dekorativer Effekte.
+Helles, reduziertes Design mit editorischer Geometrie. Klare Typografie, minimale Schatten, geometrische Akzente.
 
 ## Farbsystem
 
-### Hintergrund & Oberfläche
+### Hintergrund & Oberflaeche
 ```css
---bg: #ffffff;                          /* Reines Weiß */
---bg-warm: #f5f5f5;                     /* Leicht warm-grau */
---bg-canvas: #f5f5f3;                   /* Canvas-Fläche */
---bg-glass: rgba(255, 255, 255, 0.92);  /* Mobile Step-Card Hintergrund */
+--bg: #ffffff;
+--bg-warm: #f5f5f5;
+--bg-canvas: #f5f5f3;
+--bg-glass: rgba(255, 255, 255, 0.92);   /* Mobile Step-Cards */
+--bg-glass-hover: rgba(255, 255, 255, 0.97);
 ```
 
-### Säulen-Farben (Partikel + UI)
+### Saeulen-Farben
 ```css
---color-schools: #b8860b;   /* Dunkles Gold — Lehre */
---color-ride: #2a7a6f;      /* Gedämpftes Teal — Rezension */
---color-side: #a0522d;      /* Sienna — Forschung */
---color-events: #5b7a8a;    /* Stahlblau — Events */
-/* Varia: #8d8d8d (grau) */
+--color-schools: #b8860b;   /* Schools / Lehre */
+--color-ride: #2a7a6f;      /* RIDE / Rezensionen */
+--color-side: #a0522d;      /* SIDE / Forschung */
+--color-events: #5b7a8a;    /* Events / Veranstaltungen */
+/* Varia: #8d8d8d */
 ```
+
+### Semantische Saeulen-Labels (PILLAR_LABELS in data.js)
+| Intern | Deutsch | Englisch |
+|--------|---------|----------|
+| Schools | Lehre | Teaching |
+| RIDE | Rezensionen | Reviews |
+| SIDE | Forschung | Research |
+| Events | Veranstaltungen | Events |
+| Varia | Sonstiges | Other |
 
 ### Text
 ```css
---text-primary: #1a1a1a;    /* Fast-Schwarz */
---text-secondary: #4a4a4a;  /* Sekundärtext */
---text-dim: #999999;        /* Gedämpft */
-```
-
-### UI-Elemente
-```css
---border: rgba(0, 0, 0, 0.08);              /* Subtile Linien */
---shadow-soft: 0 1px 4px rgba(0, 0, 0, 0.04); /* Minimaler Schatten */
+--text-primary: #1a1a1a;
+--text-secondary: #4a4a4a;
+--text-dim: #999999;
+--text-accent: #b8860b;
 ```
 
 ## Typografie
 
-| Element | Font | Gewicht | Größe |
-|---------|------|---------|-------|
-| Step-Titel | Merriweather | 700 | 2rem |
-| Kicker (Akt-Nr.) | Inter | 600 | 0.7rem, uppercase, letter-spacing 0.25em |
-| Fließtext | Inter | 400 | 0.95rem |
+| Element | Font | Gewicht | Groesse |
+|---------|------|---------|---------|
+| Titel (h1-h3) | Merriweather (serif) | 700 | 2rem (Step-Titel) |
+| Body / UI | Inter (sans-serif) | 300/400/600 | 0.95rem |
+| Kicker | Inter | 600 | 0.7rem, uppercase, letter-spacing 0.25em |
 | Stats-Zahl | Merriweather | 700 | 1.6rem |
-| UI-Labels | Inter | 400 | 0.85rem |
+| UI-Labels / Buttons | Inter | 600 | 0.65-0.7rem, uppercase |
 
 ### Geometrische Akzente
-- Step-Cards: `border-left: 3px solid var(--text-primary)` (geometrischer Akzent)
+- Step-Cards: `border-left: 3px solid var(--text-primary)`
 - Stats-Bereich: `border-top: 1px solid var(--border)` als Separator
-- Lang-Toggle: `border: 1.5px solid`, invertiert auf hover
+- Lang-Toggle: `border: 1.5px solid`, invertiert auf Hover
 
-## Layout: Side-by-Side
+## Formen (TYPE_SHAPE in data.js)
 
-### Desktop (>768px)
-```
-┌──────────────┬────────────────────────────────────┐
-│  #steps      │  #sticky-vis                       │
-│  25% Breite  │  flex: 1                           │
-│  order: -1   │  position: sticky; top: 0          │
-│  bg: white   │  height: 100vh                     │
-│  border-right│  bg: var(--bg-canvas)              │
-│              │                                    │
-│  .step       │  <canvas>                          │
-│  min-h:100vh │                                    │
-│  opacity:0.25│                                    │
-│  .is-active→1│                                    │
-└──────────────┴────────────────────────────────────┘
-```
+| Form | Typen | Visuelle Kategorie |
+|------|-------|--------------------|
+| square | book | Monographien |
+| circle | journalArticle, conferencePaper, bookSection | Artikel |
+| diamond | blogPost, webpage | Kurzbeitraege/Web |
+| triangle | presentation, document | Events/Dokumente |
 
-### Mobile (≤768px)
-- Gestapeltes Overlay-Layout: `#scrolly { display: block; }`
-- Steps über Vis mit `margin-top: -100vh`
-- Step-Cards: `backdrop-filter: blur(20px)`, `background: var(--bg-glass)`
-
-## Partikel-Design
-
-### Rendering (2-Pass in canvas-utils.js)
-1. **Fill-Pass** mit Shadow: `shadowBlur: 4`, `shadowColor: rgba(0,0,0,0.15)`, `shadowOffsetY: 1`
-2. **Stroke-Pass** ohne Shadow: `strokeStyle: rgba(0,0,0,0.1)`, `lineWidth: 0.5`
-
-Kein Glow-Effekt. Subtile Schatten + dünner Stroke für Tiefe auf hellem Hintergrund.
-
-### Größe (TYPE_RADIUS in data.js)
+### Groessen (TYPE_RADIUS in data.js)
 | Typ | Radius |
 |-----|--------|
-| book | 11 |
-| journalArticle | 9 |
-| conferencePaper | 8 |
+| book | 10 |
+| journalArticle | 8 |
+| conferencePaper | 7 |
 | bookSection | 7 |
 | presentation | 6 |
 | document | 6 |
 | blogPost | 5 |
 | webpage | 5 |
 
-### Hover
-- Radius: +3px (`HOVER_RADIUS_BOOST`)
-- Cursor: pointer
-- Tooltip: HTML-Element, positioniert relativ zum Viewport
+## Partikel-Rendering (canvas-utils.js)
 
-### Transition
-- Interpolation: `lerp(current, target, 0.06)` pro Frame (in `canvas-utils.js`)
-- Staggering: `delay = index * 12` (ms-Versatz pro Partikel)
-- Threshold: `LERP_THRESHOLD = 0.5` — snapped wenn nah genug
+### 2-Pass Canvas-Rendering
+1. **Fill-Pass** mit Shadow: `shadowBlur: 3`, `shadowColor: rgba(0,0,0,0.12)`, `shadowOffsetY: 1`
+2. **Stroke-Pass** ohne Shadow: `strokeStyle: rgba(0,0,0,0.1)`, `lineWidth: 0.5`
+
+Shape-Dispatch via `tracePath(ctx, x, y, r, shape)` (circle/square/diamond/triangle).
+
+### Hover
+- Radius-Boost: +3px (`HOVER_RADIUS_BOOST`)
+- Cursor: pointer
+- Tooltip mit semantischen Labels (Typ + Pillar + Jahr)
+
+### Transition / Animation
+- Lerp-Interpolation: `speed: 0.06`, `opacitySpeed: 0.08`, `radiusSpeed: 0.1`
+- Stagger: `delay = index * 12ms` (Scrollytelling), `25ms` (Genesis)
+- Snap-Threshold: `LERP_THRESHOLD = 0.5`
 
 ## Netzwerk-Linien
 
-### Genesis-Layout (Intro)
-- Nur Links mit ≥2 gemeinsamen Autoren (`GENESIS_MIN_SHARED_CREATORS`)
-- `strokeStyle: rgba(0, 0, 0, 0.08)`, `lineWidth: 0.5`
-- Batched Single-Path-Rendering (ein `beginPath()`/`stroke()` für alle Linien)
+- Scrollytelling Network-Layout: `strokeStyle: rgba(0,0,0,0.15)`, `lineWidth: 0.5`
+- Batched Single-Path-Rendering (ein `beginPath()`/`stroke()` fuer alle Linien)
+- Explorer Network: `opacity: 0.1`
 
-### Network-Layout
-- Bipartite Links (Item → Creator)
-- `strokeStyle: rgba(0, 0, 0, 0.06)`, `lineWidth: 0.5`
+## Annotationen (SVG-Layer)
 
-## Step-Cards
+SVG-Overlay `#annotation-layer` ueber dem Canvas, `pointer-events: none`.
 
-### Desktop (im linken Panel)
-```css
-.step-content {
-  border-left: 3px solid var(--text-primary);
-  padding: 2.5rem 3rem;
-}
-```
-Kein Glass/Blur-Effekt auf Desktop (solider weißer Hintergrund im Panel).
-
-### Intro-Step Sonderbehandlung
-- Sofort sichtbar (`opacity: 1`) statt `0.25`
-- Enthält Statistiken + Inline-Legende + Scroll-CTA
-- Bekommt `.is-exited` beim Wegscrollen → faded zu `opacity: 0.25`
+### CSS-Klassen
+| Klasse | Verwendung |
+|--------|------------|
+| `.axis` | X-Achsen (Domain + Ticks) |
+| `.gridline` | Vertikale Gitterlinien (`stroke-dasharray: 2,4`) |
+| `.annotation-label` | Standard-Labels (Inter 0.7rem, 600) |
+| `.annotation-label-lg` | Grosse Zahlen bei Clusters (Merriweather 1.8rem, 700) |
+| `.annotation-label-pillar` | Pillar-Labels (Inter 0.7rem, 600, uppercase) |
 
 ## Responsive Breakpoints
 
 | Breakpoint | Anpassung |
 |------------|-----------|
-| Desktop (>768px) | Side-by-side: 25% Text-Panel + 75% Vis |
-| Tablet (≤1199px) | Detail-Panel schmaler (320px) |
-| Mobile (≤768px) | Gestapelt, Overlay-Karten, backdrop-blur |
+| >768px | Side-by-side: 25% Text-Panel + 75% Vis |
+| <=1199px | Detail-Panel schmaler (320px) |
+| <=768px | Gestapelt: `#scrolly { display: block }`, Steps als Overlay mit `backdrop-filter: blur(20px)`, `margin-top: -100vh` |
 
 ## Accessibility
 
-- `:focus-visible` Outline auf allen interaktiven Elementen (`2px solid var(--text-primary)`)
+- `:focus-visible` Outline auf allen interaktiven Elementen (2px solid)
 - `role="img"` + `aria-label` auf Canvas-Elementen
 - `aria-label` auf Range-Inputs und Pillar-Buttons
-- `tabindex="-1"` auf Detail-Panel mit `focus()` bei Öffnung
-- Sprachumschaltung via `<html lang="de|en">` + CSS-basierte Sichtbarkeit
+- `tabindex="-1"` auf Detail-Panel mit `focus()` bei Oeffnung
+- `<html lang="de|en">` + CSS-basierte Sprachsichtbarkeit
 - `@media (prefers-reduced-motion: reduce)` deaktiviert Animationen

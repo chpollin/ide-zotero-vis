@@ -66,15 +66,42 @@
   };
 
   const TYPE_RADIUS = {
-    'book': 11,
-    'journalArticle': 9,
-    'conferencePaper': 8,
+    'book': 10,
+    'journalArticle': 8,
+    'conferencePaper': 7,
     'bookSection': 7,
     'presentation': 6,
     'document': 6,
     'blogPost': 5,
     'webpage': 5
   };
+
+  // Visual shape categories: 4 groups instead of 8 types
+  // 'square' = Monographs (books), 'circle' = Articles, 'diamond' = Short/web, 'triangle' = Events/docs
+  const TYPE_SHAPE = {
+    'book':            'square',
+    'journalArticle':  'circle',
+    'conferencePaper': 'circle',
+    'bookSection':     'circle',
+    'presentation':    'triangle',
+    'document':        'triangle',
+    'blogPost':        'diamond',
+    'webpage':         'diamond'
+  };
+
+  // Semantic pillar labels (bilingual)
+  const PILLAR_LABELS = {
+    'Schools': { de: 'Lehre',          en: 'Teaching',  short: 'Schools' },
+    'RIDE':    { de: 'Rezensionen',    en: 'Reviews',   short: 'RIDE' },
+    'SIDE':    { de: 'Forschung',      en: 'Research',  short: 'SIDE' },
+    'Events':  { de: 'Veranstaltungen', en: 'Events',   short: 'Events' },
+    'Varia':   { de: 'Sonstiges',      en: 'Other',     short: 'Varia' }
+  };
+
+  const CORE_RESEARCHERS = [
+    'Franz Fischer', 'Frederike Neuber', 'Patrick Sahle', 'Daniela Schulz',
+    'Tessa Gengnagel', 'Anna-Maria Sichani', 'Elena Spadini', 'Christiane Fritze'
+  ];
 
   // ─── API ──────────────────────────────────────────
 
@@ -143,6 +170,27 @@
     return [creator.firstName, creator.lastName].filter(Boolean).join(' ');
   }
 
+  // ─── Geo Enrichment Loader ───────────────────────
+
+  let geoEnriched = null;
+
+  function loadGeoEnriched() {
+    if (geoEnriched) return Promise.resolve(geoEnriched);
+    return fetch('./data/geo-enriched.json')
+      .then(res => {
+        if (!res.ok) return {};
+        return res.json();
+      })
+      .then(data => {
+        geoEnriched = data || {};
+        return geoEnriched;
+      })
+      .catch(() => {
+        geoEnriched = {};
+        return geoEnriched;
+      });
+  }
+
   // ─── Main Data Loader ─────────────────────────────
 
   function loadData() {
@@ -163,72 +211,80 @@
       }
     }
 
-    return fetchAllItems().then(rawItems => {
-      return fetch(`${BASE_URL}/collections?limit=100&key=${API_KEY}`)
-        .then(res => res.json())
-        .then(allCollections => {
-          const subCollectionToPillar = {};
-          allCollections.forEach(col => {
-            const parentKey = col.data.parentCollection;
-            if (parentKey && COLLECTION_MAP[parentKey]) {
-              subCollectionToPillar[col.key] = COLLECTION_MAP[parentKey].pillar;
-            }
-            if (COLLECTION_MAP[col.key]) {
-              subCollectionToPillar[col.key] = COLLECTION_MAP[col.key].pillar;
-            }
-          });
+    return Promise.all([
+      fetchAllItems(),
+      fetch(`${BASE_URL}/collections?limit=100&key=${API_KEY}`).then(res => res.json()),
+      loadGeoEnriched()
+    ]).then(([rawItems, allCollections, geoData]) => {
+      const subCollectionToPillar = {};
+      allCollections.forEach(col => {
+        const parentKey = col.data.parentCollection;
+        if (parentKey && COLLECTION_MAP[parentKey]) {
+          subCollectionToPillar[col.key] = COLLECTION_MAP[parentKey].pillar;
+        }
+        if (COLLECTION_MAP[col.key]) {
+          subCollectionToPillar[col.key] = COLLECTION_MAP[col.key].pillar;
+        }
+      });
 
-          const filtered = rawItems.filter(item =>
-            item.data.itemType !== 'note' && item.data.itemType !== 'attachment'
-          );
+      const filtered = rawItems.filter(item =>
+        item.data.itemType !== 'note' && item.data.itemType !== 'attachment'
+      );
 
-          const enriched = filtered.map(item => {
-            const date = parseZoteroDate(item.data.date);
-            const place = resolvePlace(item);
-            const coords = resolveCoords(place);
-            const collections = item.data.collections || [];
+      const enriched = filtered.map(item => {
+        const date = parseZoteroDate(item.data.date);
+        let place = resolvePlace(item);
+        let coords = resolveCoords(place);
 
-            let pillar = 'Varia';
-            for (const colKey of collections) {
-              if (subCollectionToPillar[colKey]) {
-                pillar = subCollectionToPillar[colKey];
-                break;
-              }
-            }
+        // Fallback: use geo-enriched data from Python script
+        if (!coords && geoData[item.key]) {
+          place = geoData[item.key].place || place;
+          coords = geoData[item.key].coords || null;
+        }
 
-            return {
-              id: item.key,
-              title: item.data.title || '(Untitled)',
-              type: item.data.itemType,
-              date,
-              dateStr: item.data.date || '',
-              year: date ? date.getFullYear() : null,
-              place,
-              coords,
-              pillar,
-              color: PILLAR_COLORS[pillar] || PILLAR_COLORS.Varia,
-              radius: TYPE_RADIUS[item.data.itemType] || 5,
-              creators: (item.data.creators || []).map(getCreatorName),
-              url: item.data.url || null,
-              abstract: item.data.abstractNote || null,
-              collections
-            };
-          });
+        const collections = item.data.collections || [];
 
-          enriched.sort((a, b) => {
-            if (!a.date && !b.date) return 0;
-            if (!a.date) return 1;
-            if (!b.date) return -1;
-            return a.date - b.date;
-          });
+        let pillar = 'Varia';
+        for (const colKey of collections) {
+          if (subCollectionToPillar[colKey]) {
+            pillar = subCollectionToPillar[colKey];
+            break;
+          }
+        }
 
-          localStorage.setItem(CACHE_KEY, JSON.stringify({
-            timestamp: Date.now(),
-            data: enriched
-          }));
+        return {
+          id: item.key,
+          title: item.data.title || '(Untitled)',
+          type: item.data.itemType,
+          shape: TYPE_SHAPE[item.data.itemType] || 'circle',
+          date,
+          dateStr: item.data.date || '',
+          year: date ? date.getFullYear() : null,
+          place,
+          coords,
+          pillar,
+          color: PILLAR_COLORS[pillar] || PILLAR_COLORS.Varia,
+          radius: TYPE_RADIUS[item.data.itemType] || 5,
+          creators: (item.data.creators || []).map(getCreatorName),
+          url: item.data.url || null,
+          abstract: item.data.abstractNote || null,
+          collections
+        };
+      });
 
-          return enriched;
-        });
+      enriched.sort((a, b) => {
+        if (!a.date && !b.date) return 0;
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return a.date - b.date;
+      });
+
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        data: enriched
+      }));
+
+      return enriched;
     });
   }
 
@@ -269,8 +325,11 @@
     loadData,
     buildCoAuthorshipLinks,
     PILLAR_COLORS,
+    PILLAR_LABELS,
     GEO_COORDS,
-    COLLECTION_MAP
+    COLLECTION_MAP,
+    CORE_RESEARCHERS,
+    TYPE_SHAPE
   };
 
 })();

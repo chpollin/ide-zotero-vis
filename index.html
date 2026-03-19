@@ -48,6 +48,23 @@
       <canvas id="particles" role="img" aria-label="Partikelvisualisierung der IDE-Publikationen"></canvas>
       <svg id="annotation-layer"></svg>
       <div id="tooltip"></div>
+      <div id="scrolly-filter">
+        <button class="sf-btn active" data-pillar="all">
+          <span class="lang-de">Alle</span><span class="lang-en">All</span>
+        </button>
+        <button class="sf-btn" data-pillar="Schools" style="--sf-color: var(--color-schools)">
+          <span class="lang-de">Lehre</span><span class="lang-en">Teaching</span>
+        </button>
+        <button class="sf-btn" data-pillar="RIDE" style="--sf-color: var(--color-ride)">
+          <span class="lang-de">Rezensionen</span><span class="lang-en">Reviews</span>
+        </button>
+        <button class="sf-btn" data-pillar="SIDE" style="--sf-color: var(--color-side)">
+          <span class="lang-de">Forschung</span><span class="lang-en">Research</span>
+        </button>
+        <button class="sf-btn" data-pillar="Events" style="--sf-color: var(--color-events)">
+          <span class="lang-de">Events</span><span class="lang-en">Events</span>
+        </button>
+      </div>
     </div>
 
     <!-- Narrative steps -->
@@ -86,24 +103,31 @@
           <div class="step-legend">
             <div class="legend-row">
               <span class="legend-dot" style="background: var(--color-schools)"></span>
-              <span class="legend-label">Schools</span>
+              <span class="legend-label lang-de">Lehre</span>
+              <span class="legend-label lang-en">Teaching</span>
               <span class="legend-dot" style="background: var(--color-ride)"></span>
-              <span class="legend-label">RIDE</span>
+              <span class="legend-label lang-de">Rezensionen</span>
+              <span class="legend-label lang-en">Reviews</span>
               <span class="legend-dot" style="background: var(--color-side)"></span>
-              <span class="legend-label">SIDE</span>
+              <span class="legend-label lang-de">Forschung</span>
+              <span class="legend-label lang-en">Research</span>
               <span class="legend-dot" style="background: var(--color-events)"></span>
-              <span class="legend-label">Events</span>
+              <span class="legend-label lang-de">Veranstaltungen</span>
+              <span class="legend-label lang-en">Events</span>
             </div>
-            <div class="legend-row legend-size">
-              <span class="legend-dot legend-dot-lg"></span>
+            <div class="legend-row legend-shape">
+              <span class="legend-shape-icon legend-square"></span>
               <span class="legend-label lang-de">Buch</span>
               <span class="legend-label lang-en">Book</span>
-              <span class="legend-dot legend-dot-md"></span>
+              <span class="legend-shape-icon legend-circle"></span>
               <span class="legend-label lang-de">Artikel</span>
               <span class="legend-label lang-en">Article</span>
-              <span class="legend-dot legend-dot-sm"></span>
-              <span class="legend-label lang-de">Blogpost</span>
-              <span class="legend-label lang-en">Blog post</span>
+              <span class="legend-shape-icon legend-diamond"></span>
+              <span class="legend-label lang-de">Kurzbeitrag</span>
+              <span class="legend-label lang-en">Short form</span>
+              <span class="legend-shape-icon legend-triangle"></span>
+              <span class="legend-label lang-de">Vortrag</span>
+              <span class="legend-label lang-en">Presentation</span>
             </div>
           </div>
           <p class="step-cta">
@@ -202,6 +226,7 @@
       <h2>
         <span class="lang-de">Explorer</span>
         <span class="lang-en">Explorer</span>
+        <span id="explorer-item-count" class="explorer-count"></span>
       </h2>
       <div id="layout-buttons">
         <button class="layout-btn active" data-layout="cloud">
@@ -263,10 +288,12 @@
 
   <!-- Scripts (no build step, all CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
   <script src="https://unpkg.com/scrollama@3.2.0/build/scrollama.min.js"></script>
   <script src="./src/data.js"></script>
   <script src="./src/layouts.js"></script>
   <script src="./src/canvas-utils.js"></script>
+  <script src="./src/annotations.js"></script>
   <script src="./src/particles.js"></script>
   <script src="./src/scroll.js"></script>
   <script src="./src/narrative.js"></script>

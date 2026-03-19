@@ -4,83 +4,115 @@
 
 - **Zotero Group Library:** 4712864 (IDE-intern)
 - **API:** `https://api.zotero.org/groups/4712864`
-- **API Key:** in `data.js` (`API_KEY` Konstante)
-- **Zeitraum:** 2008–2024
-- **Caching:** localStorage, 24h TTL
+- **API Key:** in `src/data.js` (`API_KEY` Konstante)
+- **Zeitraum:** 2008--2024
+- **Caching:** localStorage (`ide-story-cache`), 24h TTL
 
 ## Datenprofil
 
-Die tatsächliche Anzahl der Items wird dynamisch aus der API geladen (ca. 441 nach Filterung von Notes/Attachments). Exakte Zahlen können sich bei neuen Zotero-Einträgen ändern.
+Die tatsaechliche Anzahl der Items wird dynamisch aus der API geladen (ca. 441 nach Filterung von Notes/Attachments). Exakte Zahlen koennen sich bei neuen Zotero-Eintraegen aendern.
 
 | Metrik | Hinweis |
 |--------|---------|
 | Items gesamt | Dynamisch aus API (> 400) |
 | Gefiltert | Notes + Attachments werden ausgeschlossen |
-| Items mit Datum | Großteil, geparst über `parseZoteroDate()` |
-| Items mit Ort | ~19 (aus `place`-Feld + GEO_COORDS Lookup) |
+| Items mit Datum | Grossteil, geparst ueber `parseZoteroDate()` |
+| Items mit Ort | Aus `place`-Feld + `shortTitle`-Heuristik + GEO_COORDS Lookup |
 | Einzigartige Creators | ~50+ |
-| Top-Level Collections | 6 |
+| Top-Level Collections | 6 (davon Dhd25 als Alias fuer Varia) |
 
-## Collections → Pillars
+## Collections -> Pillars
 
-Die Collection-Zuordnung passiert in `data.js` via `COLLECTION_MAP`:
+Die Collection-Zuordnung passiert in `src/data.js` via `COLLECTION_MAP`. Subcollections werden automatisch dem Pillar der uebergeordneten Collection zugeordnet.
 
-| Sammlung | Collection Key | Pillar | Farbe (CSS-Variable) |
-|----------|---------------|--------|---------------------|
-| Schools | ABQVUZ7X | Schools | `--color-schools: #b8860b` |
-| RIDE | 96BBH58W | RIDE | `--color-ride: #2a7a6f` |
-| SIDE | 8JIZ6LQD | SIDE | `--color-side: #a0522d` |
-| Events | WWEZKUJX | Events | `--color-events: #5b7a8a` |
-| Varia | 8FRU4J6S | Varia | `#8d8d8d` (grau) |
-| Dhd25 | 4DIAPN26 | (leer) | — |
+| Sammlung | Collection Key | Pillar | Farbe (CSS / PILLAR_COLORS) |
+|----------|---------------|--------|----------------------------|
+| Schools | ABQVUZ7X | Schools | `#b8860b` |
+| RIDE | 96BBH58W | RIDE | `#2a7a6f` |
+| SIDE | 8JIZ6LQD | SIDE | `#a0522d` |
+| Events | WWEZKUJX | Events | `#5b7a8a` |
+| Varia | 8FRU4J6S | Varia | `#8d8d8d` |
+| Dhd25 | 4DIAPN26 | Varia | (wird Varia zugeordnet) |
 
-## Item-Typen → Partikelgröße
+## Pillar-Labels (zweisprachig)
 
-Definiert in `data.js` (`TYPE_RADIUS`):
+Definiert in `PILLAR_LABELS` -- semantische Namen statt Kuerzel:
+
+| Pillar-Key | Deutsch | Englisch | Short |
+|------------|---------|----------|-------|
+| Schools | Lehre | Teaching | Schools |
+| RIDE | Rezensionen | Reviews | RIDE |
+| SIDE | Forschung | Research | SIDE |
+| Events | Veranstaltungen | Events | Events |
+| Varia | Sonstiges | Other | Varia |
+
+## Item-Typen -> Partikelgroesse (TYPE_RADIUS)
 
 | Typ | Radius | Visueller Eindruck |
 |-----|--------|-------------------|
-| book | 11 | Größte Partikel |
-| journalArticle | 9 | Groß |
-| conferencePaper | 8 | Mittelgroß |
+| book | 10 | Groesste Partikel |
+| journalArticle | 8 | Gross |
+| conferencePaper | 7 | Mittelgross |
 | bookSection | 7 | Mittel |
 | presentation | 6 | Klein |
 | document | 6 | Klein |
 | blogPost | 5 | Kleinste |
 | webpage | 5 | Kleinste |
 
-## Kern-Team (nach Häufigkeit)
+## Item-Typen -> Partikelform (TYPE_SHAPE)
 
-| Person | Items | Rolle |
-|--------|-------|-------|
-| IDE (Institution) | ~18 | Institutioneller Autor |
-| Franz Fischer | ~8 | Kernmitglied |
-| Frederike Neuber | ~8 | Kernmitglied |
-| Patrick Sahle | ~7 | Gründungsfigur |
-| Daniela Schulz | ~7 | Kernmitglied |
-| Tessa Gengnagel | ~6 | Kernmitglied |
-| Anna-Maria Sichani | ~6 | Kernmitglied |
-| Elena Spadini | ~6 | Kernmitglied |
-| Christiane Fritze | ~5 | Kernmitglied |
+Vier Formgruppen statt acht Typen -- kodiert die Publikationsart visuell:
+
+| Form | Typen | Bedeutung |
+|------|-------|-----------|
+| square | book | Monografien |
+| circle | journalArticle, conferencePaper, bookSection | Artikel |
+| triangle | presentation, document | Vortraege/Dokumente |
+| diamond | blogPost, webpage | Kurzbeitraege/Web |
+
+## Kern-Team (CORE_RESEARCHERS)
+
+Acht Personen werden im Netzwerk-Layout hervorgehoben:
+
+| Person | Rolle |
+|--------|-------|
+| Franz Fischer | Kernmitglied |
+| Frederike Neuber | Kernmitglied |
+| Patrick Sahle | Gruendungsfigur |
+| Daniela Schulz | Kernmitglied |
+| Tessa Gengnagel | Kernmitglied |
+| Anna-Maria Sichani | Kernmitglied |
+| Elena Spadini | Kernmitglied |
+| Christiane Fritze | Kernmitglied |
 
 ## Geografie
 
-Ort-Auflösung via `GEO_COORDS` Lookup-Tabelle in `data.js`:
+### Hardcodierte Koordinaten (GEO_COORDS)
 
-| Ort | Koordinaten |
-|-----|-------------|
-| Wien | 48.21, 16.37 |
-| Köln | 50.94, 6.96 |
-| Berlin | 52.52, 13.41 |
-| Graz | 47.07, 15.44 |
-| Chemnitz | 50.83, 12.92 |
-| Wuppertal | 51.26, 7.18 |
-| Norderstedt | 53.70, 10.01 |
-| Wiesbaden | 50.08, 8.24 |
-| Rostock | 54.09, 12.10 |
+34 Eintraege in `src/data.js`, Format `[lon, lat]`. Enthaelt Aliase (Wien/Vienna, Koeln/Cologne, Muenchen/Munich):
 
-## Datenlücken
+Wien, Koeln, Berlin, Chemnitz, Norderstedt, Wiesbaden, Graz, Wuppertal, Muenchen, Boston, Hamburg, Paderborn, Rostock, Bamberg, Lueneburg, Frankfurt, Heidelberg, Trier, Zuerich, Bern, Innsbruck, Salzburg, Passau, Wuerzburg, Leipzig, Dresden, Darmstadt, Mainz, Bonn, Duesseldorf, Essen
 
-- **Tags:** Nicht systematisch vergeben → Collections als primäre Struktur
-- **Orte:** Nur ~19 Items mit Ort → Items ohne Ort werden beim Map-Layout zentriert angezeigt
+### Ort-Aufloesung (mehrstufig)
+
+1. `item.data.place` direkt
+2. Heuristik: `shortTitle`-Parsing (Pattern `School\d+-\d+-?(\w+)$`)
+3. GEO_COORDS Lookup (exakt, Split bei `,;/&`, Substring-Match)
+4. Fallback: `data/geo-enriched.json` aus `scripts/geocode.py`
+
+### Geo-Enrichment (optional)
+
+- **Script:** `scripts/geocode.py` (Python, Wikidata SPARQL)
+- **Output:** `data/geo-enriched.json`
+- **Ablauf:** Zotero-Items holen, Ortsnamen extrahieren, via Wikidata geocodieren
+- **Laden:** `loadGeoEnriched()` in `data.js`, graceful Fallback bei fehlendem File
+
+## Co-Autorenschaft
+
+`buildCoAuthorshipLinks(items)` erzeugt Kanten zwischen Items mit gemeinsamen Autoren (exkl. `IDE` als institutioneller Autor). Wird fuer das Netzwerk-Layout genutzt.
+
+## Datenluecken
+
+- **Tags:** Nicht systematisch vergeben -- Collections als primaere Struktur
+- **Orte:** Nur ein Teil der Items hat Ortsangaben -- Items ohne Ort werden im Map-Layout als Reihe am unteren Rand angezeigt (opacity 0.15)
 - **Abstracts:** Nur bei einigen Typen vorhanden
